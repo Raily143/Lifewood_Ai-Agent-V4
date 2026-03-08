@@ -79,30 +79,47 @@ def oauth2callback(request):
     return redirect('http://localhost:3000/drive?status=success')
 
 def list_drive_files(request):
-    """Step 3: Fetch files from Drive using stored credentials."""
+    """Fetch Lifewood folders and their contents as a nested tree."""
     creds = get_user_drive_credentials(request.user)
     
     if not creds:
         return JsonResponse({'error': 'Not authenticated'}, status=401)
 
     try:
-
         service = build('drive', 'v3', credentials=creds)
 
-        results = service.files().list(
-            pageSize=1000,
-            q="trashed=false",
-            fields="nextPageToken, files(id, name, mimeType, size, modifiedTime, webViewLink)"
+        def get_children(folder_id):
+            """Recursively fetch contents of a folder."""
+            results = service.files().list(
+                q=f"'{folder_id}' in parents and trashed=false",
+                fields="files(id, name, mimeType, size, modifiedTime, webViewLink)",
+                pageSize=200,
+                orderBy="folder,name"
+            ).execute()
+            items = results.get('files', [])
+            for item in items:
+                if item['mimeType'] == 'application/vnd.google-apps.folder':
+                    item['children'] = get_children(item['id'])
+            return items
+
+        # Find all folders whose name contains "lifewood" (case-insensitive)
+        folders_result = service.files().list(
+            q="mimeType='application/vnd.google-apps.folder' and name contains 'lifewood' and trashed=false",
+            fields="files(id, name, mimeType, webViewLink)",
+            pageSize=50,
+            orderBy="name"
         ).execute()
-        return JsonResponse(results.get('files', []), safe=False)
+
+        lifewood_folders = folders_result.get('files', [])
+
+        for folder in lifewood_folders:
+            folder['children'] = get_children(folder['id'])
+
+        return JsonResponse(lifewood_folders, safe=False)
+
     except Exception as e:
-        # Provide richer error information when DEBUG is enabled to help
-        # during local development (traceback is included).
         import traceback
         tb = traceback.format_exc()
-
-        # Some google api errors (HttpError) don't include a useful str(),
-        # but expose a `.content` attribute with the response body.
         extra = None
         try:
             extra = getattr(e, 'content', None)
