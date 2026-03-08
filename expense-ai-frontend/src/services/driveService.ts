@@ -14,7 +14,8 @@ export const driveService = {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'include',
     });
     if (!response.ok) throw new Error("Failed to fetch files");
     return response.json();

@@ -11,6 +11,7 @@ from .utils import get_user_drive_credentials
 
 # Allow OAuth over HTTP for local development
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
 
 # Configuration
 GOOGLE_CLIENT_SECRETS = getattr(
@@ -18,7 +19,7 @@ GOOGLE_CLIENT_SECRETS = getattr(
     'GOOGLE_CLIENT_SECRETS',
     os.path.join(settings.BASE_DIR, 'expense_ai', 'credentials.json')
 )
-SCOPES = ['https://www.googleapis.com/auth/drive.file']
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def google_drive_auth(request):
     """Step 1: Redirect user to Google Authorization page."""
@@ -85,10 +86,13 @@ def list_drive_files(request):
         return JsonResponse({'error': 'Not authenticated'}, status=401)
 
     try:
+
         service = build('drive', 'v3', credentials=creds)
+
         results = service.files().list(
-            pageSize=10, 
-            fields="files(id, name, mimeType)"
+            pageSize=1000,
+            q="trashed=false",
+            fields="nextPageToken, files(id, name, mimeType, size, modifiedTime, webViewLink)"
         ).execute()
         return JsonResponse(results.get('files', []), safe=False)
     except Exception as e:
