@@ -1,6 +1,7 @@
 'use client';
 
-import { startTransition, useDeferredValue, useEffect, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { driveService } from '../../services/driveService';
 import styles from './page.module.css';
 
@@ -14,33 +15,34 @@ type DriveItem = {
   children?: DriveItem[];
 };
 
-type SearchResult = {
-  item: DriveItem;
-  path: string[];
-};
-
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+const LOGO_URL =
+  'https://framerusercontent.com/images/BZSiFYgRc4wDUAuEybhJbZsIBQY.png';
 
 function isFolder(item: DriveItem): boolean {
   return item.mimeType === FOLDER_MIME_TYPE;
 }
 
-function formatFileSize(size?: string): string {
-  if (!size) return 'Google Workspace';
+function getDisplayName(item: DriveItem): string {
+  if (isFolder(item)) return item.name;
 
-  const bytes = Number(size);
-  if (!Number.isFinite(bytes) || bytes <= 0) return 'Unknown size';
+  const trimmed = item.name.trim();
+  const dotIndex = trimmed.lastIndexOf('.');
+  return dotIndex > 0 ? trimmed.slice(0, dotIndex) : trimmed;
+}
 
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  let value = bytes;
-  let index = 0;
+function getItemKind(item: DriveItem): string {
+  if (isFolder(item)) return 'Folder';
+  if (item.mimeType.includes('pdf')) return 'PDF';
+  if (item.mimeType.includes('sheet') || item.mimeType.includes('excel')) return 'Spreadsheet';
+  if (item.mimeType.includes('document') || item.mimeType.includes('word')) return 'Document';
+  if (item.mimeType.includes('presentation') || item.mimeType.includes('powerpoint')) return 'Deck';
+  if (item.mimeType.includes('image')) return 'Image';
+  return 'File';
+}
 
-  while (value >= 1024 && index < units.length - 1) {
-    value /= 1024;
-    index += 1;
-  }
-
-  return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+function isImage(item: DriveItem): boolean {
+  return item.mimeType.includes('image');
 }
 
 function formatDate(date?: string): string {
@@ -53,16 +55,22 @@ function formatDate(date?: string): string {
   });
 }
 
-function getItemKind(item: DriveItem): string {
-  if (isFolder(item)) return 'Folder';
-  if (item.mimeType.includes('pdf')) return 'PDF';
-  if (item.mimeType.includes('sheet') || item.mimeType.includes('excel')) return 'Spreadsheet';
-  if (item.mimeType.includes('document') || item.mimeType.includes('word')) return 'Document';
-  if (item.mimeType.includes('presentation') || item.mimeType.includes('powerpoint')) return 'Deck';
-  if (item.mimeType.includes('image')) return 'Image';
-  if (item.mimeType.includes('video')) return 'Video';
-  if (item.mimeType.includes('audio')) return 'Audio';
-  return 'File';
+function formatFileSize(size?: string): string {
+  if (!size) return 'Google Workspace';
+
+  const bytes = Number(size);
+  if (!Number.isFinite(bytes) || bytes <= 0) return 'Unknown size';
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unitIndex = 0;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
 function summarizeTree(items: DriveItem[]) {
@@ -89,181 +97,200 @@ function findItemById(items: DriveItem[], id: string | null): DriveItem | null {
   for (const item of items) {
     if (item.id === id) return item;
     if (item.children?.length) {
-      const match = findItemById(item.children, id);
-      if (match) return match;
+      const nested = findItemById(item.children, id);
+      if (nested) return nested;
     }
   }
 
   return null;
 }
 
-function findPathToItem(items: DriveItem[], id: string, path: DriveItem[] = []): DriveItem[] | null {
+function flattenFiles(items: DriveItem[]): DriveItem[] {
+  const results: DriveItem[] = [];
+
   for (const item of items) {
-    const nextPath = [...path, item];
-    if (item.id === id) return nextPath;
-    if (item.children?.length) {
-      const nestedPath = findPathToItem(item.children, id, nextPath);
-      if (nestedPath) return nestedPath;
+    if (isFolder(item)) {
+      results.push(...flattenFiles(item.children ?? []));
+    } else {
+      results.push(item);
     }
   }
 
-  return null;
+  return results;
 }
 
-function collectSearchResults(items: DriveItem[], query: string, path: string[] = []): SearchResult[] {
-  const matches: SearchResult[] = [];
+function insertChildIntoFolder(items: DriveItem[], folderId: string, child: DriveItem): DriveItem[] {
+  return items.map((item) => {
+    if (item.id === folderId) {
+      const children = item.children ?? [];
+      const exists = children.some((existingChild) => existingChild.id === child.id);
 
-  for (const item of items) {
-    const currentPath = [...path, item.name];
-    if (item.name.toLowerCase().includes(query)) {
-      matches.push({ item, path: currentPath });
+      return {
+        ...item,
+        children: exists ? children : [child, ...children],
+      };
     }
 
     if (item.children?.length) {
-      matches.push(...collectSearchResults(item.children, query, currentPath));
+      return {
+        ...item,
+        children: insertChildIntoFolder(item.children, folderId, child),
+      };
     }
-  }
 
-  return matches;
+    return item;
+  });
 }
 
-function FolderTree({
-  items,
-  expandedFolders,
-  selectedId,
-  onToggle,
-  onSelect,
-  depth = 0,
-}: {
-  items: DriveItem[];
-  expandedFolders: Record<string, boolean>;
-  selectedId: string | null;
-  onToggle: (id: string) => void;
-  onSelect: (id: string) => void;
-  depth?: number;
-}) {
-  return (
-    <div className={styles.treeGroup}>
-      {items.filter(isFolder).map((item) => {
-        const open = Boolean(expandedFolders[item.id]);
-        const childFolders = (item.children ?? []).filter(isFolder);
-
-        return (
-          <div className={styles.treeNode} key={item.id}>
-            <div
-              className={`${styles.treeRow} ${selectedId === item.id ? styles.treeRowActive : ''}`}
-              style={{ paddingLeft: `${16 + depth * 18}px` }}
-            >
-              <button
-                aria-label={open ? `Collapse ${item.name}` : `Expand ${item.name}`}
-                className={styles.treeToggle}
-                onClick={() => onToggle(item.id)}
-                type="button"
-              >
-                {childFolders.length > 0 ? (open ? 'v' : '>') : '-'}
-              </button>
-              <button
-                className={styles.treeButton}
-                onClick={() => onSelect(item.id)}
-                type="button"
-              >
-                <span className={styles.treeLabel}>{item.name}</span>
-                <span className={styles.treeCount}>{item.children?.length ?? 0}</span>
-              </button>
-            </div>
-            {open && childFolders.length > 0 ? (
-              <FolderTree
-                depth={depth + 1}
-                expandedFolders={expandedFolders}
-                items={childFolders}
-                onSelect={onSelect}
-                onToggle={onToggle}
-                selectedId={selectedId}
-              />
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
+function removeItemFromTree(items: DriveItem[], itemId: string): DriveItem[] {
+  return items
+    .filter((item) => item.id !== itemId)
+    .map((item) => ({
+      ...item,
+      children: item.children ? removeItemFromTree(item.children, itemId) : item.children,
+    }));
 }
 
 export default function DrivePage() {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [folders, setFolders] = useState<DriveItem[]>([]);
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
+  const [viewMode, setViewMode] = useState<'tiles' | 'content'>('tiles');
+  const [statusFilter, setStatusFilter] = useState('All Statuses');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+  const [previewItem, setPreviewItem] = useState<DriveItem | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const deferredSearch = useDeferredValue(searchInput.trim().toLowerCase());
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setConnectionStatus(params.get('status'));
+    setConnectionStatus(new URLSearchParams(window.location.search).get('status'));
   }, []);
 
+  async function fetchFiles(preferredFolderId?: string | null) {
+    try {
+      const data = await driveService.listFiles();
+      setFolders(data);
+
+      const targetId = preferredFolderId ?? selectedFolderId ?? data[0]?.id ?? null;
+      setSelectedFolderId(targetId);
+      setError(null);
+      setUploadError(null);
+    } catch (err) {
+      setError('Failed to load scanned Google Drive folders.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    const fetchFiles = async () => {
-      try {
-        const data = await driveService.listFiles();
-        setFolders(data);
-
-        if (data.length > 0) {
-          setSelectedFolderId(data[0].id);
-          setExpandedFolders({ [data[0].id]: true });
-        }
-      } catch (err) {
-        setError('Failed to load scanned Google Drive folders.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchFiles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stats = summarizeTree(folders);
   const selectedFolder = findItemById(folders, selectedFolderId) ?? folders[0] ?? null;
-  const selectedPath = selectedFolder ? findPathToItem(folders, selectedFolder.id) ?? [selectedFolder] : [];
-  const searchResults = deferredSearch ? collectSearchResults(folders, deferredSearch) : [];
-  const recentFiles = (selectedFolder?.children ?? [])
-    .slice()
-    .sort((left, right) => {
-      const leftTime = left.modifiedTime ? Date.parse(left.modifiedTime) : 0;
-      const rightTime = right.modifiedTime ? Date.parse(right.modifiedTime) : 0;
-      return rightTime - leftTime;
-    })
-    .slice(0, 5);
+  const rootFolders = useMemo(() => {
+    if (!deferredSearch) return folders;
+    return folders.filter((folder) => folder.name.toLowerCase().includes(deferredSearch));
+  }, [deferredSearch, folders]);
 
-  function handleFolderSelect(id: string) {
-    const path = findPathToItem(folders, id) ?? [];
-    const nextExpanded = { ...expandedFolders };
+  const selectedContents = useMemo(() => {
+    if (!selectedFolder) return [];
 
-    for (const item of path) {
-      if (isFolder(item)) nextExpanded[item.id] = true;
-    }
+    const children = selectedFolder.children ?? [];
+    if (!deferredSearch) return children;
 
-    setExpandedFolders(nextExpanded);
-    startTransition(() => setSelectedFolderId(id));
+    return children.filter((item) => item.name.toLowerCase().includes(deferredSearch));
+  }, [deferredSearch, selectedFolder]);
+
+  const recentFiles = useMemo(
+    () =>
+      flattenFiles(selectedFolder?.children ?? [])
+        .sort((left, right) => {
+          const leftTime = left.modifiedTime ? Date.parse(left.modifiedTime) : 0;
+          const rightTime = right.modifiedTime ? Date.parse(right.modifiedTime) : 0;
+          return rightTime - leftTime;
+        })
+        .slice(0, 4),
+    [selectedFolder]
+  );
+
+  function openPreview(item: DriveItem) {
+    if (!item.webViewLink || isFolder(item)) return;
+    setPreviewItem(item);
   }
 
-  function handleFolderToggle(id: string) {
-    setExpandedFolders((current) => ({
-      ...current,
-      [id]: !current[id],
-    }));
+  function handleUploadClick() {
+    if (!selectedFolder?.id || uploading) return;
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !selectedFolder?.id) return;
+
+    try {
+      setUploading(true);
+      setUploadError(null);
+      const uploadedItem = await driveService.uploadFileToFolder(selectedFolder.id, file);
+
+      setFolders((currentFolders) =>
+        insertChildIntoFolder(currentFolders, selectedFolder.id, uploadedItem)
+      );
+
+      // Re-sync in the background so local state stays aligned with Google Drive
+      setTimeout(() => {
+        fetchFiles(selectedFolder.id);
+      }, 800);
+    } catch (uploadError) {
+      const message = uploadError instanceof Error ? uploadError.message : 'Failed to upload file';
+      setUploadError(message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleDeleteItem(item: DriveItem) {
+    const confirmed = window.confirm(`Delete "${getDisplayName(item)}" from Google Drive?`);
+    if (!confirmed) return;
+
+    try {
+      setDeletingId(item.id);
+      setUploadError(null);
+      await driveService.deleteFile(item.id);
+
+      setFolders((currentFolders) => removeItemFromTree(currentFolders, item.id));
+
+      if (previewItem?.id === item.id) {
+        setPreviewItem(null);
+      }
+
+      setTimeout(() => {
+        fetchFiles(selectedFolder?.id ?? null);
+      }, 800);
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : 'Failed to delete file';
+      setUploadError(message);
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   if (loading) {
     return (
       <main className={styles.pageShell}>
-        <section className={styles.loadingPanel}>
-          <span className={styles.loadingEyebrow}>Google Drive Sync</span>
-          <h1>Loading scanned Lifewood folders</h1>
-          <p>We are preparing the latest folder structure from your connected workspace.</p>
+        <section className={styles.loadingState}>
+          <span className={styles.badge}>Drive Sync</span>
+          <h1>Loading scanned folders</h1>
+          <p>Preparing your Lifewood Google Drive dashboard.</p>
         </section>
       </main>
     );
@@ -272,12 +299,12 @@ export default function DrivePage() {
   if (error) {
     return (
       <main className={styles.pageShell}>
-        <section className={styles.errorPanel}>
-          <span className={styles.statusBadge}>Connection issue</span>
+        <section className={styles.loadingState}>
+          <span className={styles.badge}>Connection issue</span>
           <h1>Drive data is not available</h1>
           <p>{error}</p>
-          <a className={styles.primaryLink} href="/">
-            Return to connection page
+          <a className={styles.primaryAction} href="/">
+            Return to landing page
           </a>
         </section>
       </main>
@@ -286,237 +313,286 @@ export default function DrivePage() {
 
   return (
     <main className={styles.pageShell}>
-      <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <span className={styles.heroEyebrow}>Lifewood Drive Console</span>
-          <h1>Scanned Google Drive folders, organized for faster review.</h1>
-          <p>
-            Search the scanned tree, move through folder branches quickly, and open files from one
-            responsive workspace.
-          </p>
-          <div className={styles.heroActions}>
-            <a className={styles.primaryLink} href="/">
-              Reconnect Drive
-            </a>
-            <span className={styles.heroHint}>Current view updates from the scanned Google Drive response.</span>
-          </div>
+      <header className={styles.topbar}>
+        <a className={styles.brand} href="/drive">
+          <img alt="Lifewood" className={styles.brandLogo} src={LOGO_URL} />
+        </a>
+        <div className={styles.topbarActions}>
+          <a className={styles.signOut} href="/">
+            Sign Out
+          </a>
         </div>
-        <div className={styles.heroStats}>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Top-level scans</span>
+      </header>
+
+      <section className={styles.hero}>
+        <div className={styles.heroCard}>
+          <span className={styles.badge}>Lifewood OCR Workspace</span>
+          <h1>
+            Good day, <em>admin</em>
+          </h1>
+          <p>Choose a scanned expense folder to open its review workspace.</p>
+        </div>
+        <div className={styles.heroMetrics}>
+          <article className={styles.metricCard}>
+            <span>Top-level scans</span>
             <strong>{folders.length}</strong>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Nested folders</span>
+          </article>
+          <article className={styles.metricCard}>
+            <span>Nested folders</span>
             <strong>{stats.folderCount}</strong>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statLabel}>Files indexed</span>
+          </article>
+          <article className={styles.metricCard}>
+            <span>Files indexed</span>
             <strong>{stats.fileCount}</strong>
-          </div>
+          </article>
         </div>
       </section>
 
       {connectionStatus === 'success' ? (
-        <section className={styles.banner}>
-          <span className={styles.bannerBadge}>Connected</span>
-          <p>Google Drive connected successfully. Your scanned folders are ready to browse.</p>
+        <section className={styles.statusBar}>
+          <span className={styles.statusPill}>Connected</span>
+          <p>Google Drive connected successfully. The scanned folders below are ready for review.</p>
         </section>
       ) : null}
 
-      <section className={styles.toolbar}>
-        <label className={styles.searchField}>
-          <span className={styles.searchLabel}>Search scanned folders and files</span>
-          <input
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search by folder or file name"
-            type="search"
-            value={searchInput}
-          />
-        </label>
-        <div className={styles.toolbarMeta}>
-          <span className={styles.statusBadge}>Always On Never Off</span>
-          <span className={styles.toolbarNote}>Brand palette based on the 2024 Lifewood guide.</span>
+      <section className={styles.controls}>
+        <div>
+          <h2>Expense Folders</h2>
+          <p>Each card represents a scanned folder from your connected Google Drive.</p>
+        </div>
+        <div className={styles.controlActions}>
+          <label className={styles.searchBox}>
+            <span className={styles.searchIcon}>o</span>
+            <input
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Search folders..."
+              type="search"
+              value={searchInput}
+            />
+          </label>
+          <div className={styles.viewToggle}>
+            <button
+              className={viewMode === 'tiles' ? styles.viewToggleActive : ''}
+              onClick={() => setViewMode('tiles')}
+              type="button"
+            >
+              Tiles
+            </button>
+            <button
+              className={viewMode === 'content' ? styles.viewToggleActive : ''}
+              onClick={() => setViewMode('content')}
+              type="button"
+            >
+              Content
+            </button>
+          </div>
         </div>
       </section>
 
-      <section className={styles.workspace}>
-        <aside className={styles.sidebar}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span className={styles.panelEyebrow}>Folder tree</span>
-              <h2>Scanned sources</h2>
+      <input
+        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv"
+        className={styles.hiddenInput}
+        onChange={handleFileSelected}
+        ref={fileInputRef}
+        type="file"
+      />
+
+      {viewMode === 'tiles' ? (
+        <section className={styles.folderGrid}>
+          {rootFolders.map((folder) => (
+            <button
+              className={`${styles.folderCard} ${selectedFolder?.id === folder.id ? styles.folderCardActive : ''}`}
+              key={folder.id}
+              onClick={() => setSelectedFolderId(folder.id)}
+              type="button"
+            >
+              <span className={styles.folderIcon}>[]</span>
+              <h3>{folder.name}</h3>
+              <p>{folder.children?.length ?? 0} scanned items</p>
+              <span className={styles.folderLink}>Open Folder</span>
+            </button>
+          ))}
+        </section>
+      ) : (
+        <section className={styles.folderList}>
+          {rootFolders.map((folder) => (
+            <button
+              className={`${styles.folderListRow} ${selectedFolder?.id === folder.id ? styles.folderListRowActive : ''}`}
+              key={folder.id}
+              onClick={() => setSelectedFolderId(folder.id)}
+              type="button"
+            >
+              <span className={styles.folderListIcon}>[]</span>
+              <div className={styles.folderListBody}>
+                <strong>{folder.name}</strong>
+                <span>Open folder content</span>
+              </div>
+              <div className={styles.folderListMeta}>
+                <span>{folder.children?.length ?? 0} items</span>
+                <span>Open</span>
+              </div>
+            </button>
+          ))}
+        </section>
+      )}
+
+      {selectedFolder ? (
+        <section className={styles.workspaceShell}>
+          <div className={styles.workspaceToolbar}>
+            <div className={styles.workspaceHeader}>
+              <span className={styles.badge}>Functions</span>
+              <div className={styles.workspaceTitleRow}>
+                <button
+                  className={styles.backButton}
+                  onClick={() => setSelectedFolderId(folders[0]?.id ?? null)}
+                  type="button"
+                >
+                  &lt;
+                </button>
+                <span className={styles.titleAccent} />
+                <h2>{selectedFolder.name} - Expense OCR Workspace</h2>
+              </div>
             </div>
-            <span className={styles.panelMeta}>{folders.length} roots</span>
+            <div className={styles.workspaceActions}>
+              <button className={styles.primaryAction} onClick={handleUploadClick} type="button">
+                {uploading ? 'Uploading...' : 'Upload Receipt'}
+              </button>
+              <button className={styles.secondaryAction} type="button">
+                Export
+              </button>
+            </div>
           </div>
 
-          {folders.length > 0 ? (
-            <FolderTree
-              expandedFolders={expandedFolders}
-              items={folders}
-              onSelect={handleFolderSelect}
-              onToggle={handleFolderToggle}
-              selectedId={selectedFolder?.id ?? null}
-            />
-          ) : (
-            <p className={styles.emptyState}>No folders containing Lifewood were found.</p>
-          )}
-        </aside>
+          <div className={styles.workspaceFilters}>
+            <label className={styles.workspaceSearch}>
+              <span className={styles.searchIcon}>o</span>
+              <input
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder="Search by receipt no, employee, or description..."
+                type="search"
+                value={searchInput}
+              />
+            </label>
+            <label className={styles.statusField}>
+              <span>Status</span>
+              <select onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}>
+                <option>All Statuses</option>
+                <option>Ready</option>
+                <option>Needs Review</option>
+              </select>
+            </label>
+          </div>
 
-        <div className={styles.content}>
-          {deferredSearch ? (
-            <section className={styles.panel}>
-              <div className={styles.panelHeader}>
-                <div>
-                  <span className={styles.panelEyebrow}>Search results</span>
-                  <h2>{searchResults.length} matches across the scanned tree</h2>
+          {uploadError ? <p className={styles.inlineError}>{uploadError}</p> : null}
+
+          <section className={styles.contentsSection}>
+            <div className={styles.contentsHeader}>
+              <span className={styles.contentsBadge}>Contents</span>
+              <span className={styles.contentsMeta}>{selectedContents.length} items found</span>
+            </div>
+
+            {selectedContents.length > 0 ? (
+              <div className={styles.tableWrap}>
+                <div className={styles.tableHeader}>
+                  <span>Name</span>
+                  <span>Type</span>
+                  <span>Size</span>
+                  <span>Date</span>
+                  <span>Actions</span>
                 </div>
-              </div>
-
-              {searchResults.length > 0 ? (
-                <div className={styles.resultsGrid}>
-                  {searchResults.map(({ item, path }) => (
-                    <article className={styles.resultCard} key={item.id}>
-                      <div className={styles.resultTopline}>
-                        <span className={styles.kindPill}>{getItemKind(item)}</span>
-                        <span className={styles.metaText}>{formatDate(item.modifiedTime)}</span>
-                      </div>
-                      <h3>{item.name}</h3>
-                      <p>{path.join(' / ')}</p>
-                      <div className={styles.cardActions}>
+                <div className={styles.tableBody}>
+                  {selectedContents.map((item) => (
+                    <div className={styles.tableRow} key={item.id}>
+                      <span className={styles.tableName}>{getDisplayName(item)}</span>
+                      <span className={styles.tableCellMuted}>{getItemKind(item)}</span>
+                      <span className={styles.tableCellMuted}>
+                        {isFolder(item) ? `${item.children?.length ?? 0} items` : formatFileSize(item.size)}
+                      </span>
+                      <span className={styles.tableCellMuted}>{formatDate(item.modifiedTime)}</span>
+                      <div className={styles.tableActions}>
                         {isFolder(item) ? (
                           <button
-                            className={styles.secondaryButton}
-                            onClick={() => handleFolderSelect(item.id)}
+                            className={styles.tableAction}
+                            onClick={() => setSelectedFolderId(item.id)}
                             type="button"
                           >
                             Open folder
                           </button>
-                        ) : item.webViewLink ? (
-                          <a className={styles.secondaryButton} href={item.webViewLink} rel="noreferrer" target="_blank">
-                            Open file
-                          </a>
                         ) : (
-                          <span className={styles.metaText}>{formatFileSize(item.size)}</span>
-                        )}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <p className={styles.emptyState}>No matching folders or files were found for that search.</p>
-              )}
-            </section>
-          ) : selectedFolder ? (
-            <>
-              <section className={styles.panel}>
-                <div className={styles.panelHeader}>
-                  <div>
-                    <span className={styles.panelEyebrow}>Current folder</span>
-                    <h2>{selectedFolder.name}</h2>
-                  </div>
-                  <div className={styles.pathTrail}>
-                    {selectedPath.map((item) => (
-                      <button
-                        className={`${styles.pathChip} ${item.id === selectedFolder.id ? styles.pathChipActive : ''}`}
-                        key={item.id}
-                        onClick={() => handleFolderSelect(item.id)}
-                        type="button"
-                      >
-                        {item.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className={styles.selectionStats}>
-                  <div className={styles.selectionStat}>
-                    <span>Items</span>
-                    <strong>{selectedFolder.children?.length ?? 0}</strong>
-                  </div>
-                  <div className={styles.selectionStat}>
-                    <span>Folders</span>
-                    <strong>{(selectedFolder.children ?? []).filter(isFolder).length}</strong>
-                  </div>
-                  <div className={styles.selectionStat}>
-                    <span>Files</span>
-                    <strong>{(selectedFolder.children ?? []).filter((item) => !isFolder(item)).length}</strong>
-                  </div>
-                </div>
-
-                <div className={styles.childGrid}>
-                  {(selectedFolder.children ?? []).map((item) => (
-                    <article className={styles.childCard} key={item.id}>
-                      <div className={styles.resultTopline}>
-                        <span className={styles.kindPill}>{getItemKind(item)}</span>
-                        <span className={styles.metaText}>{formatDate(item.modifiedTime)}</span>
-                      </div>
-                      <h3>{item.name}</h3>
-                      <p>
-                        {isFolder(item)
-                          ? `${item.children?.length ?? 0} items inside`
-                          : formatFileSize(item.size)}
-                      </p>
-                      <div className={styles.cardActions}>
-                        {isFolder(item) ? (
                           <button
-                            className={styles.primaryButton}
-                            onClick={() => handleFolderSelect(item.id)}
+                            className={styles.tableAction}
+                            onClick={() => openPreview(item)}
                             type="button"
                           >
-                            Explore
+                            View content
                           </button>
-                        ) : item.webViewLink ? (
-                          <a className={styles.primaryButton} href={item.webViewLink} rel="noreferrer" target="_blank">
-                            Open in Drive
-                          </a>
-                        ) : (
-                          <span className={styles.metaText}>Preview unavailable</span>
                         )}
+                        <button
+                          className={styles.tableDeleteAction}
+                          disabled={deletingId === item.id}
+                          onClick={() => handleDeleteItem(item)}
+                          type="button"
+                        >
+                          {deletingId === item.id ? 'Deleting...' : 'Delete'}
+                        </button>
                       </div>
-                    </article>
+                    </div>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className={styles.emptyWorkspace}>
+                <p>No receipts found. Upload your first receipt to get started.</p>
+              </div>
+            )}
+          </section>
+        </section>
+      ) : null}
 
-                {selectedFolder.children?.length ? null : (
-                  <div className={styles.emptyStateBox}>
-                    <span className={styles.kindPill}>Empty scan result</span>
-                    <h3>No visible child items</h3>
-                    <p className={styles.emptyState}>
-                      This folder was scanned successfully, but the current API response does not
-                      include nested files for this branch.
-                    </p>
-                  </div>
-                )}
-              </section>
-
-              <section className={styles.insightsPanel}>
-                <div className={styles.insightCard}>
-                  <span className={styles.panelEyebrow}>Selection summary</span>
-                  <h3>{(selectedFolder.children ?? []).filter(isFolder).length} child folders</h3>
-                  <p>Use the left tree to move deeper into the scanned Google Drive structure.</p>
-                </div>
-                <div className={styles.insightCard}>
-                  <span className={styles.panelEyebrow}>Recent activity</span>
-                  <h3>{recentFiles.length} recent items</h3>
-                  <ul className={styles.recentList}>
-                    {recentFiles.map((item) => (
-                      <li key={item.id}>
-                        <span>{item.name}</span>
-                        <span>{formatDate(item.modifiedTime)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </section>
-            </>
-          ) : (
-            <section className={styles.panel}>
-              <p className={styles.emptyState}>No scanned folders are available yet.</p>
-            </section>
-          )}
+      {previewItem ? (
+        <div aria-modal="true" className={styles.modalOverlay} onClick={() => setPreviewItem(null)} role="dialog">
+          <section className={styles.modalPanel} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <span className={styles.sectionLabel}>File preview</span>
+                <h2>{getDisplayName(previewItem)}</h2>
+              </div>
+              <button className={styles.modalClose} onClick={() => setPreviewItem(null)} type="button">
+                x
+              </button>
+            </div>
+            <div className={styles.modalInfo}>
+              <span className={styles.itemBadge}>{getItemKind(previewItem)}</span>
+              <span>{formatFileSize(previewItem.size)}</span>
+              <span>{formatDate(previewItem.modifiedTime)}</span>
+            </div>
+            {isImage(previewItem) ? (
+              <div className={styles.modalImageWrap}>
+                <img
+                  alt={getDisplayName(previewItem)}
+                  className={styles.modalImage}
+                  src={driveService.getFileContentUrl(previewItem.id)}
+                />
+              </div>
+            ) : (
+              <iframe
+                className={styles.modalFrame}
+                referrerPolicy="no-referrer"
+                src={previewItem.webViewLink ?? ''}
+                title={previewItem.name}
+              />
+            )}
+            <div className={styles.modalActions}>
+              <button className={styles.secondaryAction} onClick={() => setPreviewItem(null)} type="button">
+                Close
+              </button>
+              <a className={styles.primaryAction} href={previewItem.webViewLink ?? '#'} rel="noreferrer" target="_blank">
+                Open in Drive
+              </a>
+            </div>
+          </section>
         </div>
-      </section>
+      ) : null}
     </main>
   );
 }

@@ -1,19 +1,20 @@
-// src/app/layout.tsx
+import './globals.css';
+
 export const metadata = {
-  title: 'Expense AI',
-  description: 'Manage your expenses with Google Drive',
-}
+  title: 'Lifewood Expense AI',
+  description: 'Manage scanned Google Drive expense workspaces with Lifewood branding',
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, fontFamily: 'sans-serif' }}>
+      <body>
         {children}
       </body>
     </html>
-  )
+  );
 }
