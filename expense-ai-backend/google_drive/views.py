@@ -1,12 +1,17 @@
 import os
+<<<<<<< HEAD
+=======
 import json
+>>>>>>> 473cca456143f8c06579e52a6f5334859d64b64d
 import tempfile
 from django.shortcuts import redirect
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.conf import settings
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
+from googleapiclient.http import MediaFileUpload
 
 from .models import GoogleDriveToken
 from .utils import get_user_drive_credentials
@@ -125,5 +130,111 @@ def list_drive_files(request):
         import traceback
         tb = traceback.format_exc()
         if settings.DEBUG:
+<<<<<<< HEAD
+            payload = {'error': str(e) or 'HttpError', 'traceback': tb}
+            if extra:
+                payload['detail'] = extra
+            return JsonResponse(payload, status=500)
+
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
+
+def get_drive_file_content(request, file_id):
+    """Stream a Google Drive file through the backend for in-app previews."""
+    creds = get_user_drive_credentials(request.user)
+
+    if not creds:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+
+    try:
+        service = build('drive', 'v3', credentials=creds)
+        metadata = service.files().get(fileId=file_id, fields="id,name,mimeType").execute()
+        mime_type = metadata.get('mimeType', 'application/octet-stream')
+
+        # Google-native docs cannot be fetched as raw media without export logic.
+        if mime_type.startswith('application/vnd.google-apps'):
+            return JsonResponse(
+                {'error': 'Preview is only available for uploaded files, not Google-native documents.'},
+                status=400,
+            )
+
+        content = service.files().get_media(fileId=file_id).execute()
+        response = HttpResponse(content, content_type=mime_type)
+        response['Content-Disposition'] = f'inline; filename="{metadata.get("name", file_id)}"'
+        return response
+    except Exception as e:
+        if settings.DEBUG:
+            return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Unable to load file content'}, status=500)
+
+
+@csrf_exempt
+@require_POST
+def upload_drive_file(request, folder_id):
+    """Upload a file to a selected Google Drive folder using stored OAuth credentials."""
+    creds = get_user_drive_credentials(request.user)
+
+    if not creds:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+
+    uploaded_file = request.FILES.get('file')
+    if not uploaded_file:
+        return JsonResponse({'error': 'No file uploaded'}, status=400)
+
+    temp_path = None
+
+    try:
+        service = build('drive', 'v3', credentials=creds)
+
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            for chunk in uploaded_file.chunks():
+                temp_file.write(chunk)
+            temp_path = temp_file.name
+
+        file_metadata = {
+            'name': uploaded_file.name,
+            'parents': [folder_id],
+        }
+        media = MediaFileUpload(
+            temp_path,
+            mimetype=uploaded_file.content_type or 'application/octet-stream',
+            resumable=False,
+        )
+
+        created = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id,name,mimeType,size,modifiedTime,webViewLink',
+        ).execute()
+
+        return JsonResponse(created, status=201)
+    except Exception as e:
+        if settings.DEBUG:
+            return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Unable to upload file'}, status=500)
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+
+
+@csrf_exempt
+@require_POST
+def delete_drive_file(request, file_id):
+    """Delete a Google Drive item using stored OAuth credentials."""
+    creds = get_user_drive_credentials(request.user)
+
+    if not creds:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+
+    try:
+        service = build('drive', 'v3', credentials=creds)
+        service.files().delete(fileId=file_id).execute()
+        return JsonResponse({'success': True})
+    except Exception as e:
+        if settings.DEBUG:
+            return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'Unable to delete file'}, status=500)
+=======
             return JsonResponse({'error': str(e), 'traceback': tb}, status=500)
         return JsonResponse({'error': 'Internal server error'}, status=500)
+>>>>>>> 473cca456143f8c06579e52a6f5334859d64b64d
