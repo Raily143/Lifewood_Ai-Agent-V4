@@ -38,7 +38,31 @@ export const driveService = {
       throw new Error(payload.error || 'Failed to upload file');
     }
 
-    return response.json();
+    const text = await response.text();
+
+    if (!text.trim()) {
+      return {
+        id: `temp-${Date.now()}`,
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: String(file.size),
+        modifiedTime: new Date().toISOString(),
+        webViewLink: '',
+      };
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch {
+      return {
+        id: `temp-${Date.now()}`,
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        size: String(file.size),
+        modifiedTime: new Date().toISOString(),
+        webViewLink: '',
+      };
+    }
   },
 
   deleteFile: async (fileId: string) => {
