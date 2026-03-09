@@ -247,9 +247,10 @@ def upload_drive_file(request, folder_id):
         created = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id,name,mimeType,size,modifiedTime,webViewLink',
+            fields='id,name,mimeType,size,modifiedTime',
         ).execute()
 
+        created['webViewLink'] = f'https://drive.google.com/file/d/{created["id"]}/view'
         return JsonResponse(created, status=201)
     except Exception as e:
         if settings.DEBUG:
