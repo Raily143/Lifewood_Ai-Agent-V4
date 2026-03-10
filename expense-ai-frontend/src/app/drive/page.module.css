@@ -2,6 +2,7 @@
   --paper: #faf8f6;
   --white: #ffffff;
   --surface: #f1f2ef;
+  --surface-raised: #f6f6f3;
   --sea-salt: #faf8f6;
   --saffaron: #f5a623;
   --earth-yellow: #f7be68;
@@ -36,7 +37,7 @@
   margin: 10px auto 22px;
   padding: 12px 18px;
   border-radius: 18px;
-  background: rgba(241, 242, 239, 0.94);
+  background: rgba(246, 246, 243, 0.94);
   color: var(--dark-serpent);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
@@ -55,6 +56,7 @@
   width: 122px;
   max-width: 100%;
   height: auto;
+  filter: saturate(1.05) contrast(1.03);
 }
 
 .topbarNav {
@@ -137,6 +139,15 @@
   background: var(--dark-serpent);
   color: var(--paper);
   box-shadow: var(--shadow-lg);
+}
+
+.heroCard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .heroTicker {
@@ -237,6 +248,10 @@
   line-height: 1.55;
 }
 
+.heroSubtitle {
+  max-width: 34ch;
+}
+
 .heroMetrics {
   display: grid;
   grid-template-rows: repeat(3, minmax(0, 1fr));
@@ -294,8 +309,9 @@
   margin: 0 auto 16px;
   padding: 12px 14px;
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-sm);
+  border-left: 4px solid rgba(4, 98, 65, 0.35);
 }
 
 .statusBar p {
@@ -321,8 +337,16 @@
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: var(--surface);
+  background: var(--surface-raised);
   box-shadow: var(--shadow-sm);
+}
+
+.controlsIntro h2 {
+  letter-spacing: -0.04em;
+}
+
+.controlsIntro p {
+  font-size: 0.82rem;
 }
 
 .controls h2,
@@ -357,7 +381,7 @@
   padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--white);
+  background: var(--surface-raised);
   transition: all 0.2s var(--ease);
 }
 
@@ -409,6 +433,19 @@
   font: inherit;
   cursor: pointer;
   transition: all 0.2s var(--ease);
+}
+
+.viewToggle button:hover {
+  color: var(--dark-serpent);
+  background: rgba(15, 38, 26, 0.06);
+}
+
+.viewToggle button:focus-visible,
+.folderCard:focus-visible,
+.folderListRow:focus-visible,
+.signOut:focus-visible {
+  outline: 2px solid rgba(4, 98, 65, 0.35);
+  outline-offset: 2px;
 }
 
 .viewToggleActive {
@@ -535,7 +572,7 @@
   min-height: 188px;
   padding: 18px;
   border-radius: var(--radius);
-  background: var(--surface);
+  background: var(--surface-raised);
   color: var(--dark-serpent);
   text-align: left;
   cursor: pointer;
@@ -565,6 +602,7 @@
 .folderCardActive {
   transform: translateY(-3px);
   box-shadow: var(--shadow);
+  border-color: rgba(4, 98, 65, 0.28);
 }
 
 .folderIcon {
@@ -610,6 +648,10 @@
   transition: gap 0.2s var(--ease);
 }
 
+.folderLink {
+  color: var(--castleton-green);
+}
+
 .folderCard:hover .folderLink {
   gap: 6px;
 }
@@ -631,7 +673,7 @@
 .contentsSection {
   border: 1px solid var(--border);
   border-radius: 20px;
-  background: var(--surface);
+  background: var(--surface-raised);
   box-shadow: var(--shadow);
 }
 
@@ -1023,7 +1065,7 @@
   max-height: calc(100vh - 36px);
   padding: 18px;
   border-radius: 22px;
-  background: var(--surface);
+  background: var(--surface-raised);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.24);
 }
 

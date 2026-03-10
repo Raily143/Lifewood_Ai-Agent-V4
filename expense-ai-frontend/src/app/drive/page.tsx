@@ -160,7 +160,7 @@ export default function DrivePage() {
           <h1 className={`${styles.greetingText} ${animClass === 'splitIn' ? styles.splitIn : styles.splitOut}`}>
             {greeting}
           </h1>
-          <p>Select a scanned expense folder below to open its review workspace.</p>
+          <p className={styles.heroSubtitle}>Select a scanned expense folder below to open its review workspace.</p>
         </div>
         <div className={styles.heroMetrics}>
           <article className={styles.metricCard}>
@@ -189,7 +189,7 @@ export default function DrivePage() {
       ) : null}
 
       <section className={styles.controls}>
-        <div>
+        <div className={styles.controlsIntro}>
           <h2>Expense Folders</h2>
           <p>{rootFolders.length} folder{rootFolders.length !== 1 ? 's' : ''} available</p>
         </div>
