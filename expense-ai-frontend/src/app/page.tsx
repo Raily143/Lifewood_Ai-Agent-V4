@@ -1,10 +1,17 @@
 'use client';
 
+import { CheckCircle2, Clock, Shield, TrendingUp } from 'lucide-react';
 import { driveService } from '../services/driveService';
 import styles from './page.module.css';
 
 const LOGO_URL =
   'https://framerusercontent.com/images/BZSiFYgRc4wDUAuEybhJbZsIBQY.png';
+
+const FEATURES = [
+  { icon: CheckCircle2, text: 'Auto Categorize' },
+  { icon: Clock,         text: 'Real-Time Tracking' },
+  { icon: TrendingUp,    text: 'Smart Reports' },
+];
 
 export default function HomePage() {
   const handleConnect = async () => {
@@ -13,26 +20,79 @@ export default function HomePage() {
   };
 
   return (
-    <main className={styles.pageShell}>
-      <section className={styles.card}>
-        <div className={styles.header}>
+    <div className={styles.shell}>
+
+      {/* ── Left panel ─────────────────────────────────────────── */}
+      <div className={styles.leftPanel}>
+        {/* Logo */}
+        <div className={styles.logoWrap}>
           <img alt="Lifewood" className={styles.logo} src={LOGO_URL} />
-          <span className={styles.badge}>Always On Never Off</span>
         </div>
-        <div className={styles.copy}>
+
+        {/* Content */}
+        <div className={styles.content}>
           <span className={styles.kicker}>Expense workspace</span>
-          <h1>Expense AI</h1>
-          <p>Connect Google Drive to open your Lifewood review dashboard.</p>
+          <h1 className={styles.heading}>Expense AI</h1>
+          <p className={styles.desc}>
+            Connect Google Drive to open your Lifewood review dashboard.
+          </p>
+          <div className={styles.actions}>
+            <button className={styles.primaryButton} onClick={handleConnect} type="button">
+              Connect Google Drive
+            </button>
+            <a className={styles.secondaryButton} href="/drive">
+              Open Dashboard
+            </a>
+          </div>
         </div>
-        <div className={styles.actions}>
-          <button className={styles.primaryButton} onClick={handleConnect} type="button">
-            Connect Google Drive
-          </button>
-          <a className={styles.secondaryButton} href="/drive">
-            Open Dashboard
-          </a>
+
+        {/* Footer */}
+        <div className={styles.footer}>
+          <div className={styles.footerLeft}>
+            <Shield size={14} />
+            <span>Secure employee access</span>
+          </div>
+          <span>&copy; {new Date().getFullYear()} Lifewood</span>
         </div>
-      </section>
-    </main>
+      </div>
+
+      {/* ── Right panel ────────────────────────────────────────── */}
+      <div className={styles.rightPanel}>
+        {/* Background image */}
+        <div className={styles.bgImage} />
+
+        {/* Overlay content */}
+        <div className={styles.overlay}>
+          {/* Top badge */}
+          <div className={styles.heroBadge}>
+            Always On Never Off
+          </div>
+
+          {/* Hero text */}
+          <div className={styles.heroText}>
+            <h2>
+              Expense AI<br />
+              Intelligence<br />
+              <span className={styles.accent}>Assistant</span>
+            </h2>
+            <p>
+              AI-powered receipt scanning, automated categorization,
+              and real-time tracking — all in one clean workspace.
+            </p>
+          </div>
+
+          {/* Feature tags */}
+          <div className={styles.featureTags}>
+            {FEATURES.map(({ icon: Ic, text }) => (
+              <div key={text} className={styles.featureTag}>
+                <Ic className={styles.featureIcon} size={14} />
+                {text}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+    </div>
   );
 }
