@@ -5,26 +5,19 @@ from .models import GoogleDriveToken
 
 def get_user_drive_credentials(user):
     """
-    Retrieves credentials safely. Falls back to the first available 
-    token if the user is not logged in (common in local dev).
+    Retrieves credentials for the authenticated user only.
+    Returns None if the user is not logged in.
     """
-    token_record = None
+    if not user or not user.is_authenticated:
+        return None
 
     try:
-        # 1. Try to get the specific user's token if they are logged in
-        if user and user.is_authenticated:
-            token_record = GoogleDriveToken.objects.filter(user=user).first()
-        
-        # 2. Fallback: If no user or anonymous, grab the first token in the DB
-        # This is what allows Next.js to work during local testing!
-        if not token_record:
-            token_record = GoogleDriveToken.objects.first()
+        token_record = GoogleDriveToken.objects.filter(user=user).first()
 
         if not token_record:
-            print("No GoogleDriveToken found in database.")
+            print(f"No GoogleDriveToken found for user: {user.username}")
             return None
 
-        # 3. Build the Credentials object
         creds = Credentials(
             token=token_record.access_token,
             refresh_token=token_record.refresh_token,
@@ -34,7 +27,6 @@ def get_user_drive_credentials(user):
             scopes=token_record.scopes.split(',')
         )
 
-        # 4. Handle Expiration
         if creds.expired and creds.refresh_token:
             creds.refresh(Request())
             token_record.access_token = creds.token
