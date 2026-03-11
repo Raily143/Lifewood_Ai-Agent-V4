@@ -40,9 +40,6 @@ export default function HomePage() {
             <button className={styles.primaryButton} onClick={handleConnect} type="button">
               Connect Google Drive
             </button>
-            <a className={styles.secondaryButton} href="/drive">
-              Open Dashboard
-            </a>
           </div>
         </div>
 

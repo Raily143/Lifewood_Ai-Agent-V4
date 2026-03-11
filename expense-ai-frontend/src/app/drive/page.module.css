@@ -284,10 +284,10 @@
 
 .metricCard span {
   display: block;
-  color: rgba(15, 38, 26, 0.5);
+  color: rgba(15, 38, 26, 0.74);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 600;
 }
 
@@ -318,8 +318,8 @@
 
 .statusBar p {
   margin: 0;
-  color: rgba(15, 38, 26, 0.6);
-  font-size: 0.88rem;
+  color: rgba(15, 38, 26, 0.78);
+  font-size: 0.92rem;
 }
 
 .statusPill,
@@ -348,6 +348,7 @@
 }
 
 .controlsIntro p {
+  color: rgba(15, 38, 26, 0.74);
   font-size: 0.84rem;
 }
 
@@ -363,7 +364,7 @@
 
 .controls p {
   margin: 4px 0 0;
-  color: rgba(15, 38, 26, 0.5);
+  color: rgba(15, 38, 26, 0.74);
   font-size: 0.85rem;
 }
 
@@ -634,7 +635,7 @@
 .summaryCard li,
 .emptyPanel p {
   margin: 6px 0 0;
-  color: rgba(15, 38, 26, 0.5);
+  color: rgba(15, 38, 26, 0.72);
   line-height: 1.5;
   font-size: 0.84rem;
 }
