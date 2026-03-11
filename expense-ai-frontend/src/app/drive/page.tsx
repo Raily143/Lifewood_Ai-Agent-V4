@@ -121,7 +121,7 @@ export default function DrivePage() {
     return (
       <main className={styles.pageShell}>
         <section className={styles.loadingState}>
-          <WifiOff size={28} style={{ opacity: 0.6 }} />
+          <WifiOff className={styles.mutedIcon} size={28} />
           <h1>Unable to connect</h1>
           <p>{error}</p>
           <a className={styles.primaryAction} href="/">
@@ -149,6 +149,7 @@ export default function DrivePage() {
         </div>
       </header>
 
+      <div className={styles.pageContent}>
       <section className={styles.hero}>
         <div className={styles.heroCard}>
           <div className={styles.heroTicker} aria-label="Always on never off">
@@ -228,11 +229,10 @@ export default function DrivePage() {
         <section className={styles.folderGrid}>
           {rootFolders.map((folder, i) => (
             <button
-              className={styles.folderCard}
+              className={`${styles.folderCard} ${styles[`stagger${i % 12}`]}`}
               key={folder.id}
               onClick={() => openFolder(folder.id)}
               type="button"
-              style={{ animationDelay: `${i * 50}ms` }}
             >
               <span className={styles.folderIcon}><Folder size={20} /></span>
               <h3>{folder.name}</h3>
@@ -272,6 +272,7 @@ export default function DrivePage() {
           )}
         </section>
       )}
+      </div>
     </main>
   );
 }

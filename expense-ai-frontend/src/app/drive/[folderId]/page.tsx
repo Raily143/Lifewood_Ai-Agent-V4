@@ -313,18 +313,19 @@ export default function FolderWorkspacePage() {
         </div>
       </header>
 
-      <input
+      <div className={styles.pageContent}>
+        <input
         accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv"
         className={styles.hiddenInput}
         onChange={handleFileSelected}
         ref={fileInputRef}
+        title="Upload receipt file"
         type="file"
-      />
+        />
 
       <section className={styles.workspaceShell}>
         <div className={styles.workspaceToolbar}>
           <div className={styles.workspaceHeader}>
-            <span className={styles.badge}>Functions</span>
             <div className={styles.workspaceTitleRow}>
               <button className={styles.backButton} onClick={() => router.push('/drive')} type="button">
                 &lt;
@@ -531,6 +532,7 @@ export default function FolderWorkspacePage() {
           )}
         </section>
       </section>
+      </div>
 
       {previewItem ? (
         <div aria-modal="true" className={styles.modalOverlay} onClick={() => setPreviewItem(null)} role="dialog">
