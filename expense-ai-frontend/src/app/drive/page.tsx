@@ -1,7 +1,7 @@
 'use client';
 
-import { ChevronRight, CheckCircle2, File, Folder, FolderOpen, Grid3X3, LayoutList, Loader2, LogOut, Search, WifiOff } from 'lucide-react';
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowRight, CheckCircle2, ChevronRight, Clock3, File, Folder, FolderOpen, Grid3X3, LayoutDashboard, LayoutList, Loader2, LogOut, Search, Sparkles, WifiOff } from 'lucide-react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { driveService } from '../../services/driveService';
 import styles from './page.module.css';
@@ -40,6 +40,86 @@ function summarizeTree(items: DriveItem[]) {
   }
 
   return { folderCount, fileCount };
+}
+
+function getLatestModified(items: DriveItem[]): string | null {
+  let latestTimestamp = 0;
+
+  for (const item of items) {
+    if (item.modifiedTime) {
+      const parsed = Date.parse(item.modifiedTime);
+      if (Number.isFinite(parsed)) {
+        latestTimestamp = Math.max(latestTimestamp, parsed);
+      }
+    }
+
+    if (item.children?.length) {
+      const nestedLatest = getLatestModified(item.children);
+      if (nestedLatest) {
+        latestTimestamp = Math.max(latestTimestamp, Date.parse(nestedLatest));
+      }
+    }
+  }
+
+  return latestTimestamp ? new Date(latestTimestamp).toISOString() : null;
+}
+
+function formatRelativeTime(value: string | null): string {
+  if (!value) return 'No recent activity';
+
+  const diffMs = Date.now() - Date.parse(value);
+  const diffMinutes = Math.max(1, Math.round(diffMs / 60000));
+
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hr ago`;
+
+  const diffDays = Math.round(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(value));
+}
+
+function formatAbsoluteDate(value: string | null): string {
+  if (!value) return 'Waiting for first scan';
+
+  return new Intl.DateTimeFormat('en-PH', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function countItems(item: DriveItem): number {
+  if (!item.children?.length) return 0;
+
+  return item.children.reduce((total, child) => {
+    if (isFolder(child)) {
+      return total + 1 + countItems(child);
+    }
+
+    return total + 1;
+  }, 0);
+}
+
+function getFolderHealth(item: DriveItem): { label: string; tone: 'healthy' | 'attention' } {
+  const totalItems = countItems(item);
+
+  if (totalItems >= 5) {
+    return { label: 'Ready for review', tone: 'healthy' };
+  }
+
+  if (totalItems >= 1) {
+    return { label: 'Needs more uploads', tone: 'attention' };
+  }
+
+  return { label: 'Empty workspace', tone: 'attention' };
 }
 
 const GREETINGS = ['Good day, admin', 'Welcome back, admin', 'Hello, admin'];
@@ -96,10 +176,16 @@ export default function DrivePage() {
   }, []);
 
   const stats = summarizeTree(folders);
+  const latestModified = useMemo(() => getLatestModified(folders), [folders]);
   const rootFolders = useMemo(() => {
     if (!deferredSearch) return folders;
     return folders.filter((folder) => folder.name.toLowerCase().includes(deferredSearch));
   }, [deferredSearch, folders]);
+  const activeFolder = rootFolders[0] ?? null;
+  const foldersWithFiles = useMemo(
+    () => folders.filter((folder) => (folder.children?.length ?? 0) > 0).length,
+    [folders]
+  );
 
   function openFolder(folderId: string) {
     router.push(`/drive/${folderId}`);
@@ -135,16 +221,31 @@ export default function DrivePage() {
   return (
     <main className={styles.pageShell}>
       <header className={styles.topbar}>
+        {/* ── Brand ── */}
         <a className={styles.brand} href="/drive">
           <img alt="Lifewood" className={styles.brandLogo} src={LOGO_URL} />
+          <span className={styles.brandSeparator} aria-hidden="true" />
+          <span className={styles.brandBadge}>Expense AI</span>
         </a>
+
+        {/* ── Centre nav ── */}
         <nav className={styles.topbarNav}>
-          <span className={styles.navLabel}>Dashboard</span>
+          <div className={styles.navPill}>
+            <LayoutDashboard className={styles.navIcon} size={14} />
+            <span className={styles.navLabel}>Dashboard</span>
+            <span className={styles.navActiveDot} aria-hidden="true" />
+          </div>
         </nav>
+
+        {/* ── Actions ── */}
         <div className={styles.topbarActions}>
+          <div className={styles.syncBadge}>
+            <span className={styles.syncPulse} aria-hidden="true" />
+            <span>{folders.length} folder{folders.length !== 1 ? 's' : ''} synced</span>
+          </div>
           <a className={styles.signOut} href="/">
             <LogOut size={14} />
-            Sign Out
+            <span>Sign Out</span>
           </a>
         </div>
       </header>
@@ -152,6 +253,7 @@ export default function DrivePage() {
       <div className={styles.pageContent}>
       <section className={styles.hero}>
         <div className={styles.heroCard}>
+          <span className={styles.badge}>Operations workspace</span>
           <div className={styles.heroTicker} aria-label="Always on never off">
             <div className={styles.heroTickerTrack}>
               <span>Always On Never Off • Always On Never Off • Always On Never Off • Always On Never Off •</span>
@@ -162,6 +264,18 @@ export default function DrivePage() {
             {greeting}
           </h1>
           <p className={styles.heroSubtitle}>Select a scanned expense folder below to open its review workspace.</p>
+          <div className={styles.heroDetails}>
+            <div className={styles.heroDetailCard}>
+              <span>Last sync window</span>
+              <strong>{formatRelativeTime(latestModified)}</strong>
+              <p>{formatAbsoluteDate(latestModified)}</p>
+            </div>
+            <div className={styles.heroDetailCard}>
+              <span>Review coverage</span>
+              <strong>{foldersWithFiles}/{folders.length || 1}</strong>
+              <p>folders already contain scanned material</p>
+            </div>
+          </div>
         </div>
         <div className={styles.heroMetrics}>
           <article className={styles.metricCard}>
@@ -180,6 +294,42 @@ export default function DrivePage() {
             <strong>{stats.fileCount}</strong>
           </article>
         </div>
+      </section>
+
+      <section className={styles.overviewGrid}>
+        <article className={styles.overviewCard}>
+          <div className={styles.overviewHeader}>
+            <span className={styles.sectionLabel}>Queue pulse</span>
+            <Sparkles size={16} />
+          </div>
+          <strong>{rootFolders.length} active review lanes</strong>
+          <p>
+            Search, switch views, and move straight into the workspace with the most recent expense activity.
+          </p>
+        </article>
+
+        <article className={styles.overviewCard}>
+          <div className={styles.overviewHeader}>
+            <span className={styles.sectionLabel}>Suggested next</span>
+            <Clock3 size={16} />
+          </div>
+          <strong>{activeFolder ? activeFolder.name : 'No folder selected'}</strong>
+          <p>
+            {activeFolder
+              ? `${countItems(activeFolder)} indexed item${countItems(activeFolder) === 1 ? '' : 's'} ready to inspect.`
+              : 'Connect or upload more files to populate your review queue.'}
+          </p>
+          {activeFolder ? (
+            <button
+              className={styles.inlineAction}
+              onClick={() => openFolder(activeFolder.id)}
+              type="button"
+            >
+              Open recommended folder
+              <ArrowRight size={15} />
+            </button>
+          ) : null}
+        </article>
       </section>
 
       {connectionStatus === 'success' ? (
@@ -228,17 +378,41 @@ export default function DrivePage() {
       {viewMode === 'tiles' ? (
         <section className={styles.folderGrid}>
           {rootFolders.map((folder, i) => (
-            <button
-              className={`${styles.folderCard} ${styles[`stagger${i % 12}`]}`}
-              key={folder.id}
-              onClick={() => openFolder(folder.id)}
-              type="button"
-            >
-              <span className={styles.folderIcon}><Folder size={20} /></span>
-              <h3>{folder.name}</h3>
-              <p>{folder.children?.length ?? 0} items</p>
-              <span className={styles.folderLink}>Open <ChevronRight size={14} /></span>
-            </button>
+            (() => {
+              const directItems = folder.children?.length ?? 0;
+              const totalIndexedItems = countItems(folder);
+              const health = getFolderHealth(folder);
+              const recentActivity = formatRelativeTime(getLatestModified(folder.children ?? []));
+
+              return (
+                <button
+                  className={`${styles.folderCard} ${styles[`stagger${i % 12}`]}`}
+                  key={folder.id}
+                  onClick={() => openFolder(folder.id)}
+                  type="button"
+                >
+                  <div className={styles.folderCardTop}>
+                    <span className={styles.folderIcon}><Folder size={20} /></span>
+                    <span className={`${styles.folderStatus} ${health.tone === 'healthy' ? styles.folderStatusHealthy : styles.folderStatusAttention}`}>
+                      {health.label}
+                    </span>
+                  </div>
+                  <h3>{folder.name}</h3>
+                  <p>{directItems} direct item{directItems === 1 ? '' : 's'} in this workspace</p>
+                  <div className={styles.folderStats}>
+                    <div>
+                      <span>Indexed</span>
+                      <strong>{totalIndexedItems}</strong>
+                    </div>
+                    <div>
+                      <span>Recent activity</span>
+                      <strong>{recentActivity}</strong>
+                    </div>
+                  </div>
+                  <span className={styles.folderLink}>Open workspace <ChevronRight size={14} /></span>
+                </button>
+              );
+            })()
           ))}
           {rootFolders.length === 0 && (
             <div className={styles.emptyState}>
