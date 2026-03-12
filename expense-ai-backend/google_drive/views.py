@@ -31,6 +31,7 @@ SCOPES = ['https://www.googleapis.com/auth/drive',
 
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 BACKEND_URL = os.environ.get('BACKEND_URL', 'http://localhost:8000')
+N8N_AGENT_SECRET = os.environ.get('N8N_AGENT_SECRET', '')
 
 OAUTH_REDIRECT_URI = os.environ.get(
     'OAUTH_REDIRECT_URI',
@@ -38,12 +39,22 @@ OAUTH_REDIRECT_URI = os.environ.get(
 )
 
 
+def _is_n8n_request(request):
+    """Check if the request is coming from n8n with the shared secret."""
+    secret = request.headers.get('X-N8N-Secret') or request.headers.get('X-n8n-secret')
+    return N8N_AGENT_SECRET and secret == N8N_AGENT_SECRET
+
+
+def _get_n8n_credentials():
+    """Get the first available stored Google Drive credentials for n8n use."""
+    token = GoogleDriveToken.objects.first()
+    if not token:
+        return None
+    from .utils import get_credentials_from_token
+    return get_credentials_from_token(token)
+
+
 def _get_client_secrets_file():
-    """
-    Returns a path to credentials.json.
-    On Railway, reads from the GOOGLE_CREDENTIALS_JSON env var and writes a temp file.
-    Locally, reads from the repo path set in settings.
-    """
     creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
     if creds_json:
         tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
@@ -70,15 +81,10 @@ def google_drive_auth(request):
 
 
 def _get_or_create_google_user(creds):
-    """Map the Google account to a local Django user using the id_token."""
     id_token = creds.id_token
-
-    # id_token may be a raw JWT string — decode the payload if so
     if isinstance(id_token, str):
         try:
-            # JWT is three base64 parts separated by dots — payload is the middle one
             payload_b64 = id_token.split('.')[1]
-            # Add padding if needed
             payload_b64 += '=' * (4 - len(payload_b64) % 4)
             id_token = json_module.loads(base64.urlsafe_b64decode(payload_b64))
         except Exception as e:
@@ -132,11 +138,9 @@ def oauth2callback(request):
     )
 
     try:
-        # Fix: Railway proxy passes http internally, force https for oauthlib
         auth_response = request.build_absolute_uri()
         if not settings.DEBUG and auth_response.startswith('http://'):
             auth_response = 'https://' + auth_response[len('http://'):]
-
         flow.fetch_token(authorization_response=auth_response)
     except Exception as e:
         print(f"Token fetch failed: {e}")
@@ -174,10 +178,15 @@ def oauth2callback(request):
 
 
 def list_drive_files(request):
-    creds = get_user_drive_credentials(request.user)
-
-    if not creds:
-        return JsonResponse({'error': 'Not authenticated'}, status=401)
+    # Allow n8n background worker to use stored credentials
+    if _is_n8n_request(request):
+        creds = _get_n8n_credentials()
+        if not creds:
+            return JsonResponse({'error': 'No stored Google credentials. A user must log in first.'}, status=401)
+    else:
+        creds = get_user_drive_credentials(request.user)
+        if not creds:
+            return JsonResponse({'error': 'Not authenticated'}, status=401)
 
     try:
         service = build('drive', 'v3', credentials=creds)
@@ -213,16 +222,19 @@ def list_drive_files(request):
         tb = traceback.format_exc()
         if settings.DEBUG:
             return JsonResponse({'error': str(e) or 'HttpError', 'traceback': tb}, status=500)
-
         return JsonResponse({'error': 'Internal server error'}, status=500)
 
 
 def get_drive_file_content(request, file_id):
-    """Stream a Google Drive file through the backend for in-app previews."""
-    creds = get_user_drive_credentials(request.user)
-
-    if not creds:
-        return JsonResponse({'error': 'Not authenticated'}, status=401)
+    # Allow n8n background worker to use stored credentials
+    if _is_n8n_request(request):
+        creds = _get_n8n_credentials()
+        if not creds:
+            return JsonResponse({'error': 'No stored Google credentials.'}, status=401)
+    else:
+        creds = get_user_drive_credentials(request.user)
+        if not creds:
+            return JsonResponse({'error': 'Not authenticated'}, status=401)
 
     try:
         service = build('drive', 'v3', credentials=creds)
@@ -248,9 +260,7 @@ def get_drive_file_content(request, file_id):
 @csrf_exempt
 @require_POST
 def upload_drive_file(request, folder_id):
-    """Upload a file to a selected Google Drive folder using stored OAuth credentials."""
     creds = get_user_drive_credentials(request.user)
-
     if not creds:
         return JsonResponse({'error': 'Not authenticated'}, status=401)
 
@@ -298,9 +308,7 @@ def upload_drive_file(request, folder_id):
 @csrf_exempt
 @require_POST
 def delete_drive_file(request, file_id):
-    """Delete a Google Drive item using stored OAuth credentials."""
     creds = get_user_drive_credentials(request.user)
-
     if not creds:
         return JsonResponse({'error': 'Not authenticated'}, status=401)
 
