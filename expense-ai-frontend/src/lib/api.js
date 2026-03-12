@@ -36,7 +36,7 @@ export const sendMessage = (message, conversationId, history = []) =>
 // ── Helpers ────────────────────────────────────────────────────────────────
 export const formatPeso = (value) => {
   const num = parseFloat(value) || 0;
-  return '₱' + num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return 'PHP ' + num.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 export const CATEGORY_LABELS = {

@@ -1,54 +1,58 @@
 import { useState, useEffect, useRef } from 'react';
+import { Bot } from 'lucide-react';
 import { sendMessage, fetchHistory } from '../../lib/api';
 import ChatMessage from './ChatMessage';
 import ChatInput   from './ChatInput';
 
-// ── Styles ───────────────────────────────────────────────────────────────────
+const LOGO_URL =
+  'https://framerusercontent.com/images/BZSiFYgRc4wDUAuEybhJbZsIBQY.png?width=1519&height=429';
 
 const fabStyle = (open) => ({
   position: 'fixed',
-  bottom: '28px',
-  right: '28px',
+  bottom: 'var(--lw-fab-bottom)',
+  right: 'var(--lw-fab-right)',
   width: '56px',
   height: '56px',
-  borderRadius: '50%',
-  background: open ? '#1f2937' : 'linear-gradient(135deg, #f59e0b, #d97706)',
-  border: open ? '2px solid #374151' : 'none',
+  borderRadius: '18px',
+  background: open ? 'var(--lw-white)' : 'var(--lw-accent)',
+  border: open ? '1px solid var(--lw-border)' : '0',
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: '22px',
-  boxShadow: open ? 'none' : '0 8px 32px rgba(245,158,11,0.4)',
+  fontSize: '14px',
+  color: 'var(--lw-dark)',
+  boxShadow: open ? 'var(--lw-shadow-soft)' : '0 14px 32px rgba(255,179,71,0.35)',
   transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
   zIndex: 1000,
   outline: 'none',
 });
 
-const panelStyle = (open) => ({
+const panelStyle = (open, dragging) => ({
   position: 'fixed',
-  bottom: '96px',
-  right: '28px',
-  width: '380px',
-  height: '580px',
-  background: '#0a0e1a',
-  border: '1px solid #1f2937',
+  bottom: 'var(--lw-chat-bottom)',
+  right: 'var(--lw-chat-right)',
+  width: 'var(--lw-chat-width)',
+  height: 'min(var(--lw-chat-height), calc(100vh - 140px))',
+  maxHeight: 'calc(100vh - 140px)',
+  background: 'var(--lw-white)',
+  border: '1px solid var(--lw-border)',
   borderRadius: '16px',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
-  boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+  boxShadow: 'var(--lw-shadow-soft)',
   zIndex: 999,
   opacity: open ? 1 : 0,
   transform: open ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.96)',
   pointerEvents: open ? 'auto' : 'none',
-  transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+  transition: dragging ? 'none' : 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
 });
 
 const headerStyle = {
-  background: 'linear-gradient(135deg, #111827, #0f172a)',
-  borderBottom: '1px solid #1f2937',
-  padding: '16px 20px',
+  background: 'linear-gradient(180deg, var(--lw-sea-salt) 0%, #fff6e8 100%)',
+  borderBottom: '1px solid var(--lw-border)',
+  padding: '14px 18px',
   display: 'flex',
   alignItems: 'center',
   gap: '12px',
@@ -59,11 +63,11 @@ const msgBubble = (role) => ({
   padding: '10px 14px',
   borderRadius: role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
   background: role === 'user'
-    ? 'linear-gradient(135deg, #f59e0b, #d97706)'
-    : '#111827',
-  border: role === 'agent' ? '1px solid #1f2937' : 'none',
-  color: role === 'user' ? '#0a0e1a' : '#f9fafb',
-  fontFamily: "'Syne', sans-serif",
+    ? 'var(--lw-accent)'
+    : 'var(--lw-sea-salt)',
+  border: role === 'agent' ? '1px solid var(--lw-border)' : 'none',
+  color: 'var(--lw-dark)',
+  fontFamily: "'Manrope', sans-serif",
   fontSize: '13px',
   lineHeight: 1.6,
   alignSelf: role === 'user' ? 'flex-end' : 'flex-start',
@@ -78,16 +82,36 @@ const SUGGESTIONS = [
   'Explain VAT rules under EOPT Act',
 ];
 
-// ── Component ────────────────────────────────────────────────────────────────
-
 export default function ChatPanel({ conversationId, onConversationCreate }) {
   const [open,     setOpen]     = useState(false);
   const [messages, setMessages] = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [convId,   setConvId]   = useState(conversationId || null);
   const bottomRef              = useRef(null);
+  const [headPos, setHeadPos] = useState({ right: 12, bottom: 28 });
+  const [dragVisual, setDragVisual] = useState(null);
+  const dragState = useRef({ dragging: false, moved: false, startX: 0, startY: 0, startRight: 0, startBottom: 0 });
+  const panelRef = useRef(null);
+  const panelSize = useRef({ w: 380, h: 580 });
+  const [panelPos, setPanelPos] = useState(null);
+  const [snapping, setSnapping] = useState(false);
+  const [bubbleIndex, setBubbleIndex] = useState(0);
+  const [bubbleAnim, setBubbleAnim] = useState('bubble-in');
+  const PANEL_OFFSET = 68;
+  const FAB_SIZE = 56;
+  const GAP = 12;
+  const BUBBLES = [
+    'How may I help you today?',
+    'Do you need anything?',
+    'Ask me how much you spend this month!',
+    'Want a quick expense summary?',
+    'Check if receipts are BIR compliant',
+    'Ask for top spending categories',
+    'Need help reviewing a receipt?',
+    'Ask for monthly trends',
+    'Need VAT guidance?',
+  ];
 
-  // Load history when panel opens
   useEffect(() => {
     if (open && convId) {
       fetchHistory(convId)
@@ -96,7 +120,38 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
     }
   }, [open, convId]);
 
-  // Scroll to bottom on new messages
+  useEffect(() => {
+    if (open) return;
+    const id = window.setInterval(() => {
+      setBubbleAnim('bubble-out');
+      window.setTimeout(() => {
+        setBubbleIndex((prev) => (prev + 1) % BUBBLES.length);
+        setBubbleAnim('bubble-in');
+      }, 220);
+    }, 6000);
+    return () => window.clearInterval(id);
+  }, [open, BUBBLES.length]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem('lwChatHeadPos');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed?.right === 'number' && typeof parsed?.bottom === 'number') {
+          const vw = window.innerWidth;
+          const maxRight = Math.max(12, vw - FAB_SIZE - 12);
+          const fabLeft = vw - parsed.right - FAB_SIZE;
+          const snapRight = fabLeft < vw / 2 ? maxRight : 12;
+          setHeadPos({ right: snapRight, bottom: parsed.bottom });
+        } else if ((parsed?.side === 'left' || parsed?.side === 'right') && typeof parsed?.bottom === 'number') {
+          const vw = window.innerWidth;
+          const maxRight = Math.max(12, vw - FAB_SIZE - 12);
+          setHeadPos({ right: parsed.side === 'left' ? maxRight : 12, bottom: parsed.bottom });
+        }
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -125,7 +180,7 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'agent',
-        content: '⚠️ Could not reach the AI agent. Make sure n8n is running and the webhook URL is set.',
+        content: 'Could not reach the AI agent. Make sure n8n is running and the webhook URL is set.',
         id: Date.now() + 1,
         error: true,
       }]);
@@ -134,73 +189,260 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const clampPos = (pos, size) => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const maxRight = Math.max(12, vw - size.w - 12);
+    const maxBottom = Math.max(12, vh - size.h - 12);
+    return {
+      right: Math.min(Math.max(12, pos.right), maxRight),
+      bottom: Math.min(Math.max(12, pos.bottom), maxBottom),
+    };
+  };
+
+  const clampPanel = (pos, size) => {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const maxLeft = Math.max(12, vw - size.w - 12);
+    const maxBottom = Math.max(12, vh - size.h - 12);
+    return {
+      left: Math.min(Math.max(12, pos.left), maxLeft),
+      bottom: Math.min(Math.max(12, pos.bottom), maxBottom),
+    };
+  };
+
+  const updatePanelSize = () => {
+    if (!panelRef.current) return;
+    const rect = panelRef.current.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      panelSize.current = { w: rect.width, h: rect.height };
     }
+  };
+
+  const currentRight = dragVisual?.right ?? headPos.right;
+  const currentBottom = dragVisual?.bottom ?? headPos.bottom;
+
+  useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      updatePanelSize();
+      const vw = window.innerWidth;
+      const fabLeft = vw - currentRight - FAB_SIZE;
+      const openRight = fabLeft < vw / 2;
+      const targetLeft = openRight
+        ? fabLeft + FAB_SIZE + GAP
+        : fabLeft - panelSize.current.w - GAP;
+      setPanelPos(
+        clampPanel(
+          { left: targetLeft, bottom: currentBottom + PANEL_OFFSET },
+          panelSize.current
+        )
+      );
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, currentRight, currentBottom]);
+
+  useEffect(() => {
+    if (!open) return;
+    try {
+      window.localStorage.setItem('lwChatHeadPos', JSON.stringify(headPos));
+    } catch {}
+  }, [headPos, open]);
+
+  useEffect(() => {
+    if (open) return;
+    setHeadPos({ right: 12, bottom: 28 });
+    setDragVisual(null);
+  }, [open]);
+
+  useEffect(() => {
+    const handleMove = (e) => {
+      if (!dragState.current.dragging) return;
+      const dx = e.clientX - dragState.current.startX;
+      const dy = e.clientY - dragState.current.startY;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragState.current.moved = true;
+      const nextRight = Math.max(12, dragState.current.startRight - dx);
+      const nextBottom = Math.max(12, dragState.current.startBottom - dy);
+      const clampedFab = clampPos({ right: nextRight, bottom: nextBottom }, { w: FAB_SIZE, h: FAB_SIZE });
+      setDragVisual(clampedFab);
+      if (open) {
+        const vw = window.innerWidth;
+        const fabLeft = vw - clampedFab.right - FAB_SIZE;
+        const openRight = fabLeft < vw / 2;
+        const targetLeft = openRight
+          ? fabLeft + FAB_SIZE + GAP
+          : fabLeft - panelSize.current.w - GAP;
+        setPanelPos(
+          clampPanel(
+            { left: targetLeft, bottom: clampedFab.bottom + PANEL_OFFSET },
+            panelSize.current
+          )
+        );
+      }
+    };
+
+  const handleUp = () => {
+    dragState.current.dragging = false;
+    if (!dragVisual) return;
+    const vw = window.innerWidth;
+    const maxRight = Math.max(12, vw - FAB_SIZE - 12);
+    const fabLeft = vw - dragVisual.right - FAB_SIZE;
+    const snapRight = fabLeft < vw / 2 ? maxRight : 12;
+    const snapped = { right: snapRight, bottom: dragVisual.bottom };
+    setSnapping(true);
+    setHeadPos(snapped);
+    setDragVisual(null);
+    if (open) {
+      const targetLeft = snapRight === maxRight
+        ? (vw - snapRight - FAB_SIZE) + FAB_SIZE + GAP
+        : (vw - snapRight - FAB_SIZE) - panelSize.current.w - GAP;
+      setPanelPos(
+        clampPanel(
+          { left: targetLeft, bottom: snapped.bottom + PANEL_OFFSET },
+          panelSize.current
+        )
+      );
+    }
+    window.setTimeout(() => setSnapping(false), 220);
+  };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      updatePanelSize();
+      const base = { right: currentRight, bottom: currentBottom };
+      if (open) {
+        const vw = window.innerWidth;
+        const fabLeft = vw - base.right - FAB_SIZE;
+        const openRight = fabLeft < vw / 2;
+        const targetLeft = openRight
+          ? fabLeft + FAB_SIZE + GAP
+          : fabLeft - panelSize.current.w - GAP;
+        setPanelPos(
+          clampPanel(
+            { left: targetLeft, bottom: base.bottom + PANEL_OFFSET },
+            panelSize.current
+          )
+        );
+      }
+      const clamped = clampPos(base, { w: FAB_SIZE, h: FAB_SIZE });
+      const maxRight = Math.max(12, window.innerWidth - FAB_SIZE - 12);
+      const snappedRight = clamped.right > 12 ? maxRight : 12;
+      setHeadPos({ right: snappedRight, bottom: clamped.bottom });
+      setDragVisual(null);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [open, currentRight, currentBottom]);
+
+  const startDrag = (e) => {
+    dragState.current.dragging = true;
+    dragState.current.moved = false;
+    dragState.current.startX = e.clientX;
+    dragState.current.startY = e.clientY;
+    dragState.current.startRight = currentRight;
+    dragState.current.startBottom = currentBottom;
   };
 
   return (
     <>
-      {/* Panel */}
-      <div style={panelStyle(open)}>
-        {/* Header */}
+      <div
+        ref={panelRef}
+        style={{
+          ...panelStyle(open, dragState.current.dragging),
+          left: panelPos ? `${panelPos.left}px` : 'auto',
+          right: panelPos ? 'auto' : 'var(--lw-chat-right)',
+          bottom: panelPos ? `${panelPos.bottom}px` : 'var(--lw-chat-bottom)',
+          transition: dragState.current.dragging
+            ? 'none'
+            : snapping
+              ? 'all 0.22s cubic-bezier(0.2, 0.9, 0.2, 1)'
+              : panelStyle(open, dragState.current.dragging).transition,
+        }}
+      >
         <div style={headerStyle}>
           <div style={{
-            width: '36px', height: '36px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '16px', flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
           }}>
-            🤖
+            <img alt="Lifewood" src={LOGO_URL} style={{ height: '26px', width: 'auto' }} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: '14px', fontWeight: 700, color: '#f9fafb' }}>
-              Lifewood Expense AI
+            <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: '14px', fontWeight: 700, color: 'var(--lw-text)' }}>
+              Expense AI
             </div>
-            <div style={{ fontFamily: "'Syne', sans-serif", fontSize: '11px', color: '#10b981' }}>
-              ● Online · GPT-4o mini
+            <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: '11px', color: 'var(--lw-green)' }}>
+              Online - GPT-4o mini
             </div>
           </div>
-          <button
-            onClick={() => setMessages([])}
-            title="Clear chat"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4b5563', fontSize: '16px', padding: '4px' }}
-          >
-            🗑
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={() => setMessages([])}
+              title="Clear chat"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--lw-muted)', fontSize: '12px', padding: '6px' }}
+            >
+              Clear
+            </button>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="Close chat"
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '10px',
+                background: 'var(--lw-white)',
+                border: '1px solid var(--lw-border)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--lw-dark)',
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(19,48,32,0.08)',
+              }}
+            >
+              X
+            </button>
+          </div>
         </div>
 
-        {/* Messages */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {messages.length === 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingTop: '8px' }}>
-              <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>✨</div>
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: '14px', color: '#9ca3af', lineHeight: 1.5 }}>
-                  Ask me anything about your<br />expenses or BIR compliance
+              <div style={{ textAlign: 'center', padding: '14px 0' }}>
+                <div style={{ fontFamily: "'Manrope', sans-serif", fontSize: '13px', color: 'var(--lw-muted)', lineHeight: 1.5 }}>
+                  Ask me anything about your
+                  <br />expenses or BIR compliance
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 {SUGGESTIONS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => handleSend(s)}                    style={{
-                      background: '#111827',
-                      border: '1px solid #1f2937',
-                      borderRadius: '8px',
+                    onClick={() => handleSend(s)}
+                    style={{
+                      background: 'var(--lw-sea-salt)',
+                      border: '1px solid var(--lw-border)',
+                      borderRadius: '10px',
                       padding: '10px 10px',
-                      color: '#9ca3af',
-                      fontFamily: "'Syne', sans-serif",
+                      color: 'var(--lw-text)',
+                      fontFamily: "'Manrope', sans-serif",
                       fontSize: '11px',
                       textAlign: 'left',
                       cursor: 'pointer',
                       lineHeight: 1.4,
                       transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#f59e0b50'; e.currentTarget.style.color = '#f9fafb'; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#1f2937'; e.currentTarget.style.color = '#9ca3af'; }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--lw-accent)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--lw-border)'; }}
                   >
                     {s}
                   </button>
@@ -226,7 +468,7 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
                 {[0, 1, 2].map(i => (
                   <div key={i} style={{
                     width: '6px', height: '6px', borderRadius: '50%',
-                    background: '#f59e0b',
+                    background: 'var(--lw-accent-deep)',
                     animation: `bounce 1.2s ${i * 0.2}s infinite`,
                   }} />
                 ))}
@@ -236,22 +478,95 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
         <ChatInput
           onSend={handleSend}
           disabled={loading}
         />
       </div>
 
-      {/* FAB */}
-      <button style={fabStyle(open)} onClick={() => setOpen(o => !o)}>
-        {open ? '✕' : '💬'}
+      <button
+        style={{
+          ...fabStyle(open),
+          right: `${currentRight}px`,
+          bottom: `${currentBottom}px`,
+          cursor: dragState.current.dragging ? 'grabbing' : 'grab',
+          transition: dragState.current.dragging
+            ? 'none'
+            : snapping
+              ? 'all 0.22s cubic-bezier(0.2, 0.9, 0.2, 1)'
+              : fabStyle(open).transition,
+        }}
+        onMouseDown={startDrag}
+        onClick={() => {
+          if (dragState.current.moved) return;
+          setOpen(o => !o);
+        }}
+        aria-label={open ? 'Close chat' : 'Open chat'}
+      >
+        {!open && (
+          <div
+            style={{
+              position: 'absolute',
+              right: '72px',
+              bottom: '6px',
+              background: 'rgba(255,255,255,0.65)',
+              border: '2px solid rgba(19,48,32,0.25)',
+              borderRadius: '16px',
+              padding: '9px 14px',
+              fontFamily: "'Manrope', sans-serif",
+              fontSize: '12px',
+              color: 'var(--lw-text)',
+              boxShadow: '0 12px 26px rgba(19,48,32,0.18)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              animation: `bubble-float 3s ease-in-out infinite, ${bubbleAnim} 0.22s ease`,
+            }}
+          >
+            {BUBBLES[bubbleIndex]}
+          </div>
+        )}
+        <span style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          background: open ? 'var(--lw-sea-salt)' : '#ffd89b',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--lw-dark)',
+          animation: open ? 'ai-open 0.5s ease-out, ai-idle 2.8s ease-in-out infinite' : 'ai-idle 3.2s ease-in-out infinite',
+        }}>
+          <Bot size={16} strokeWidth={2.2} />
+        </span>
       </button>
 
       <style>{`
         @keyframes bounce {
           0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
           40% { transform: translateY(-6px); opacity: 1; }
+        }
+        @keyframes ai-open {
+          0% { transform: scale(0.7) rotate(-18deg); opacity: 0.6; }
+          60% { transform: scale(1.1) rotate(6deg); opacity: 1; }
+          100% { transform: scale(1) rotate(0deg); }
+        }
+        @keyframes ai-idle {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        @keyframes bubble-float {
+          0%, 100% { transform: translateY(0); opacity: 0.95; }
+          50% { transform: translateY(-4px); opacity: 1; }
+        }
+        @keyframes bubble-in {
+          0% { transform: translateY(6px) scale(0.98); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes bubble-out {
+          0% { transform: translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateY(-6px) scale(0.98); opacity: 0; }
         }
         @keyframes pulse {
           0%, 100% { opacity: 1; }
