@@ -15,7 +15,9 @@ def get_credentials_from_token(token_record):
             client_secret=token_record.client_secret,
             scopes=token_record.scopes.split(',')
         )
-        if creds.expired and creds.refresh_token:
+        # Always refresh if we have a refresh_token — since expiry isn't
+        # stored, we can't trust creds.expired to be accurate
+        if creds.refresh_token:
             creds.refresh(Request())
             token_record.access_token = creds.token
             token_record.save()
