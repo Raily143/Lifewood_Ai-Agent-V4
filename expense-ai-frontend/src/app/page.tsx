@@ -73,8 +73,8 @@ export default function HomePage() {
               <span className={styles.accent}>Assistant</span>
             </h2>
             <p>
-              AI-powered receipt scanning, automated categorization,
-              and real-time tracking — all in one clean workspace.
+              AI powered receipt scanning, automated categorization,
+              and real time tracking, all in one clean workspace.
             </p>
           </div>
 
