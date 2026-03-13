@@ -232,9 +232,7 @@ export default function DrivePage() {
         <nav className={styles.topbarNav}>
           <a
             className={styles.navPill}
-            href="https://peaceful-gentleness-production-181e.up.railway.app/dashboard"
-            rel="noopener noreferrer"
-            target="_blank"
+            href="/dashboard"
           >
             <LayoutDashboard className={styles.navIcon} size={14} />
             <span className={styles.navLabel}>Dashboard</span>
