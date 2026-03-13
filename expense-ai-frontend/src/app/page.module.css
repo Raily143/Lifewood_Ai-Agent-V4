@@ -239,7 +239,6 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-<<<<<<< HEAD
   justify-content: center;
   width: min(92%, 760px);
   max-width: 100%;
@@ -254,40 +253,21 @@
   padding: 8px 34px;
   font-size: 25pt;
   font-weight: 800;
-  line-height: 0.96;
+  line-height: 1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   text-align: center;
-=======
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.12);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
-  padding: 8px 16px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  align-self: flex-start;
->>>>>>> b6b845ce6ae90545d016c4a5d336703ed6f9d584
   animation: fadeUp 0.4s ease both;
 }
 
 .heroBadgeAlwaysOn {
   color: #FFB347;
-  position: relative;
-  top: 3px;
-  animation: mottoFloat 1.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+  animation: mottoFloat 1.1s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 
 .heroBadgeNeverOff {
   color: #046241;
-  position: relative;
-  top: 3px;
-  animation: mottoFloat 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.18s infinite;
+  animation: mottoFloat 1.1s cubic-bezier(0.22, 1, 0.36, 1) 0.14s infinite;
 }
 
 /* Hero text */
@@ -332,12 +312,10 @@
 .featureTags {
   display: flex;
   flex-wrap: wrap;
-<<<<<<< HEAD
+  width: 100%;
+  align-self: center;
   justify-content: center;
   gap: 8px;
-=======
-  gap: 10px;
->>>>>>> b6b845ce6ae90545d016c4a5d336703ed6f9d584
   animation: fadeUp 0.4s 300ms ease both;
 }
 
@@ -387,8 +365,8 @@
     filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
   }
   50% {
-    transform: translateY(-9px) scale(1.07);
-    filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.22));
+    transform: translateY(-13px) scale(1.11);
+    filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.28));
   }
 }
 
@@ -445,11 +423,6 @@
 
   .overlay {
     padding: 16px;
-  }
-
-  .heroBadge {
-    font-size: 0.62rem;
-    padding: 6px 12px;
   }
 
   .heroText h2 {
