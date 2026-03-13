@@ -27,10 +27,11 @@ export const fetchConversations = () => apiFetch('/api/billing/chat/conversation
 export const fetchHistory = (conversationId) =>
   apiFetch(`/api/billing/chat/history/?conversation_id=${conversationId}`);
 
-export const sendMessage = (message, conversationId, history = []) =>
+export const sendMessage = (message, conversationId, history = [], opts = {}) =>
   apiFetch('/api/billing/chat/message/', {
     method: 'POST',
     body: JSON.stringify({ message, conversation_id: conversationId, history }),
+    signal: opts.signal,
   });
 
 // ── Helpers ────────────────────────────────────────────────────────────────

@@ -240,7 +240,7 @@ export default function DrivePage() {
             target="_blank"
           >
             <LayoutDashboard className={styles.navIcon} size={14} />
-            <span className={styles.navLabel}>Dashboard</span>
+            <span className={styles.navLabel}>GO TO DASHBOARD</span>
             <span className={styles.navActiveDot} aria-hidden="true" />
           </a>
         </nav>

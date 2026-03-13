@@ -1,13 +1,18 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
 import { formatPeso } from '../../lib/api';
 
 const cardStyle = {
-  background: 'var(--lw-surface)',
-  border: '1px solid var(--lw-border)',
+  background: 'var(--glass-bg)',
+  border: '1px solid var(--glass-border)',
   borderRadius: '16px',
   padding: '22px',
   position: 'relative',
   overflow: 'hidden',
-  boxShadow: 'var(--lw-shadow-soft)',
+  boxShadow: 'var(--glass-shadow)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
 };
 
 const accentLine = (color) => ({
@@ -45,6 +50,37 @@ const subStyle = {
   color: 'var(--lw-muted)',
 };
 
+function useCountUp(value, duration = 900) {
+  const [display, setDisplay] = useState(0);
+  const startRef = useRef(0);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    const start = performance.now();
+    const from = startRef.current || 0;
+    const to = Number.isFinite(value) ? value : 0;
+    const delta = to - from;
+
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const next = from + delta * eased;
+      setDisplay(next);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        startRef.current = to;
+      }
+    };
+
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [value, duration]);
+
+  return display;
+}
+
 export default function SpendSummaryCards({ summary, loading }) {
   if (loading) return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
@@ -64,16 +100,21 @@ export default function SpendSummaryCards({ summary, loading }) {
   const changeColor = pctChange === null ? 'var(--lw-muted)' : pctChange <= 0 ? '#046241' : '#C17110';
   const changeLabel = pctChange === null ? 'n/a' : `${pctChange > 0 ? '+' : ''}${pctChange.toFixed(1)}% vs last month`;
 
+  const animTotalSpend = useCountUp(totalSpend);
+  const animTotalVat = useCountUp(totalVat);
+  const animTxCount = useCountUp(txCount);
+  const animAvgTx = useCountUp(avgTx);
+
   const cards = [
     {
       label: 'Total Spend',
-      value: formatPeso(totalSpend),
+      value: formatPeso(animTotalSpend),
       sub: <span style={{ color: changeColor }}>{changeLabel}</span>,
       accent: 'var(--lw-accent)',
     },
     {
       label: 'VAT Paid',
-      value: formatPeso(totalVat),
+      value: formatPeso(animTotalVat),
       sub: <span style={{ color: 'var(--lw-muted)' }}>
         {totalSpend > 0 ? ((totalVat / totalSpend) * 100).toFixed(1) : '0'}% of total spend
       </span>,
@@ -81,13 +122,13 @@ export default function SpendSummaryCards({ summary, loading }) {
     },
     {
       label: 'Transactions',
-      value: txCount.toLocaleString(),
+      value: Math.round(animTxCount).toLocaleString(),
       sub: <span style={{ color: 'var(--lw-muted)' }}>receipts processed</span>,
       accent: 'var(--lw-earth)',
     },
     {
       label: 'Avg. Transaction',
-      value: formatPeso(avgTx),
+      value: formatPeso(animAvgTx),
       sub: <span style={{ color: 'var(--lw-muted)' }}>
         {summary?.period_start ? `${summary.period_start} - ${summary.period_end}` : 'this period'}
       </span>,

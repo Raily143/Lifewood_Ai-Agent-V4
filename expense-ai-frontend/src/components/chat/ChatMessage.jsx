@@ -1,3 +1,5 @@
+'use client';
+
 import { formatPeso } from '../../lib/api';
 
 function renderContent(text) {
@@ -117,23 +119,35 @@ export default function ChatMessage({ role, content, timestamp, error = false, r
   const isAgent = role === 'agent';
 
   const bubbleStyle = {
+<<<<<<< HEAD
+    display: 'inline-flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    width: 'fit-content',
+    minWidth: isUser ? '64px' : '56px',
+    maxWidth: 'min(85%, 420px)',
+=======
+>>>>>>> 46ee45b76523536914444844671d78a9e3cafb70
     padding: '10px 14px',
     borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
     background: error
       ? 'rgba(193,113,16,0.12)'
       : isUser
         ? 'var(--lw-accent)'
-        : 'var(--lw-sea-salt)',
+        : 'var(--lw-surface-alt)',
     border: error
       ? '1px solid rgba(193,113,16,0.3)'
       : isAgent
-        ? '1px solid var(--lw-border)'
+        ? '1px solid var(--glass-border)'
         : 'none',
     color: 'var(--lw-dark)',
     fontFamily: "'Manrope', sans-serif",
     fontSize: '13px',
     lineHeight: 1.6,
-    wordBreak: 'break-word',
+    whiteSpace: 'pre-wrap',
+    wordBreak: 'normal',
+    overflowWrap: 'anywhere',
+    textAlign: 'left',
     boxShadow: isUser ? '0 6px 14px rgba(255,179,71,0.25)' : 'none',
   };
 
@@ -143,11 +157,28 @@ export default function ChatMessage({ role, content, timestamp, error = false, r
       flexDirection: 'column',
       alignItems: isUser ? 'flex-end' : 'flex-start',
       gap: '2px',
+      width: '100%',
     }}>
+<<<<<<< HEAD
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        alignItems: 'flex-end',
+        width: '100%',
+        justifyContent: isUser ? 'flex-end' : 'flex-start',
+      }}>
+=======
       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', width: '100%', justifyContent: isUser ? 'flex-end' : 'flex-start' }}>
+>>>>>>> 46ee45b76523536914444844671d78a9e3cafb70
         {isAgent && <Avatar role="agent" />}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '85%' }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+          maxWidth: isUser ? '85%' : '100%',
+          alignItems: isUser ? 'flex-end' : 'flex-start',
+        }}>
           <div style={bubbleStyle}>
             {error && (
               <div style={{ marginBottom: '4px', fontSize: '12px', color: '#C17110' }}>

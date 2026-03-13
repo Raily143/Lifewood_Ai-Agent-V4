@@ -1,12 +1,16 @@
+'use client';
+
 import { useState } from 'react';
 import { CATEGORY_LABELS, formatPeso } from '../../lib/api';
 
 const cardStyle = {
-  background: 'var(--lw-surface)',
-  border: '1px solid var(--lw-border)',
+  background: 'var(--glass-bg)',
+  border: '1px solid var(--glass-border)',
   borderRadius: '16px',
   padding: '24px',
-  boxShadow: 'var(--lw-shadow-soft)',
+  boxShadow: 'var(--glass-shadow)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
 };
 
 const titleStyle = {
@@ -90,8 +94,8 @@ export default function RecentReceipts({ receipts, loading }) {
           onChange={e => setSearch(e.target.value)}
           placeholder="Search merchant, category..."
           style={{
-            background: 'var(--lw-sea-salt)',
-            border: '1px solid var(--lw-border)',
+            background: 'var(--lw-surface-alt)',
+            border: '1px solid var(--glass-border)',
             borderRadius: '8px',
             padding: '7px 12px',
             color: 'var(--lw-text)',

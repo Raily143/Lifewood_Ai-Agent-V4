@@ -19,8 +19,9 @@ const PAGE = {
   minHeight: '100vh',
   background: 'var(--lw-paper)',
   backgroundImage: `
-    radial-gradient(ellipse 60% 40% at 15% -5%, rgba(255,179,71,0.16) 0%, transparent 65%),
-    radial-gradient(ellipse 70% 45% at 85% 110%, rgba(4,98,65,0.12) 0%, transparent 60%)
+    radial-gradient(ellipse 70% 45% at 18% -8%, rgba(255,179,71,0.22) 0%, transparent 62%),
+    radial-gradient(ellipse 80% 55% at 88% 110%, rgba(4,98,65,0.18) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 35%)
   `,
   fontFamily: "'Manrope', sans-serif",
   color: 'var(--lw-text)',
@@ -28,7 +29,7 @@ const PAGE = {
 
 const NAVBAR = {
   borderBottom: '1px solid var(--lw-border)',
-  background: 'rgba(255,255,255,0.9)',
+  background: 'var(--glass-bg-strong)',
   backdropFilter: 'blur(10px)',
   padding: 'var(--lw-navbar-padding)',
   minHeight: 'var(--lw-navbar-height)',
@@ -127,6 +128,9 @@ export default function Dashboard() {
           </div>
 
           <div className="lw-navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <a className="lw-back" href="/drive">
+              Back to Drive
+            </a>
             <div style={{
               display: 'flex',
               gap: '4px',
@@ -158,34 +162,27 @@ export default function Dashboard() {
             </div>
 
             <button
+              className="lw-refresh"
               onClick={load}
               disabled={loading}
               title={lastRefresh ? `Last refreshed: ${lastRefresh.toLocaleTimeString()}` : 'Refresh'}
-              style={{
-                background: loading ? 'var(--lw-surface)' : 'var(--lw-white)',
-                border: '1px solid var(--lw-border)',
-                borderRadius: '10px',
-                padding: '8px 14px',
-                color: 'var(--lw-text)',
-                fontFamily: "'Manrope', sans-serif",
-                fontSize: '12px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={e => !loading && (e.currentTarget.style.borderColor = 'var(--lw-accent)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--lw-border)')}
+              type="button"
             >
-              <span style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: loading ? 'var(--lw-accent)' : 'var(--lw-green)',
-                animation: loading ? 'pulse 1s ease-in-out infinite' : 'none',
-              }} />
-              Refresh
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="currentColor"
+                viewBox="0 0 16 16"
+                aria-hidden="true"
+              >
+                <path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z" />
+                <path
+                  fillRule="evenodd"
+                  d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.9A5.002 5.002 0 0 0 8 3zM3.1 9a5.002 5.002 0 0 0 8.757 2.182.5.5 0 1 1 .771.636A6.002 6.002 0 0 1 2.083 9H3.1z"
+                />
+              </svg>
+              {loading ? 'Refreshing...' : 'Refresh'}
             </button>
           </div>
         </nav>
@@ -281,12 +278,17 @@ export default function Dashboard() {
           --lw-accent: #FFB347;
           --lw-accent-deep: #C17110;
           --lw-earth: #FFC370;
-          --lw-border: #e6dfcf;
+          --lw-border: rgba(19,48,32,0.12);
           --lw-muted: #708E7C;
           --lw-text: #133020;
-          --lw-surface: #ffffff;
-          --lw-surface-alt: #F9F7F7;
+          --lw-surface: rgba(255,255,255,0.86);
+          --lw-surface-alt: rgba(255,255,255,0.7);
           --lw-shadow-soft: 0 18px 40px rgba(19,48,32,0.12);
+          --glass-bg: linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.62) 100%);
+          --glass-bg-strong: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.82) 100%);
+          --glass-border: rgba(255,255,255,0.65);
+          --glass-shadow: 0 18px 45px rgba(19,48,32,0.16);
+          --glass-highlight: linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0) 60%);
           --lw-navbar-padding: 0 32px;
           --lw-navbar-height: 64px;
           --lw-content-padding: 32px 32px 120px;
@@ -308,6 +310,65 @@ export default function Dashboard() {
         ::-webkit-scrollbar-thumb { background: rgba(4,98,65,0.2); border-radius: 3px; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .lw-refresh {
+          color: var(--lw-white);
+          background-color: var(--lw-dark);
+          font-weight: 600;
+          border-radius: 0.5rem;
+          font-size: 0.8rem;
+          line-height: 1.5rem;
+          padding: 0.45rem 1rem;
+          cursor: pointer;
+          text-align: center;
+          display: inline-flex;
+          align-items: center;
+          border: none;
+          gap: 0.75rem;
+          transition: background-color 0.15s ease, transform 0.15s ease;
+          box-shadow: 0 10px 18px rgba(19,48,32,0.16);
+        }
+        .lw-refresh:hover {
+          background-color: var(--lw-green);
+        }
+        .lw-refresh:active {
+          transform: translateY(1px);
+        }
+        .lw-refresh svg {
+          display: inline;
+          width: 1rem;
+          height: 1rem;
+          color: var(--lw-white);
+        }
+        .lw-refresh:focus svg {
+          animation: spin_357 0.5s linear;
+        }
+        .lw-refresh:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        @keyframes spin_357 {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .lw-back {
+          color: var(--lw-text);
+          background: var(--lw-white);
+          font-weight: 600;
+          border-radius: 0.6rem;
+          font-size: 0.8rem;
+          line-height: 1.5rem;
+          padding: 0.45rem 0.9rem;
+          border: 1px solid var(--lw-border);
+          text-decoration: none;
+          display: inline-flex;
+          align-items: center;
+          transition: background-color 0.15s ease, border-color 0.15s ease;
+          box-shadow: 0 6px 14px rgba(19,48,32,0.08);
+        }
+        .lw-back:hover {
+          background: var(--lw-surface-alt);
+          border-color: rgba(19,48,32,0.2);
+        }
 
         @media (max-width: 900px) {
           :root {

@@ -1,11 +1,13 @@
 import { getComplianceIssues, formatPeso } from '../../lib/api';
 
 const cardStyle = {
-  background: 'var(--lw-surface)',
-  border: '1px solid var(--lw-border)',
+  background: 'var(--glass-bg)',
+  border: '1px solid var(--glass-border)',
   borderRadius: '16px',
   padding: '24px',
-  boxShadow: 'var(--lw-shadow-soft)',
+  boxShadow: 'var(--glass-shadow)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
 };
 
 const titleStyle = {

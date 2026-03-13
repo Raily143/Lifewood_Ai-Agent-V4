@@ -1,4 +1,7 @@
+'use client';
+
 import { useState, useEffect, useRef } from 'react';
+
 import { Bot } from 'lucide-react';
 import { sendMessage, fetchHistory } from '../../lib/api';
 import ChatMessage from './ChatMessage';
@@ -35,13 +38,15 @@ const panelStyle = (open, dragging) => ({
   width: 'var(--lw-chat-width)',
   height: 'min(var(--lw-chat-height), calc(100vh - 140px))',
   maxHeight: 'calc(100vh - 140px)',
-  background: 'var(--lw-white)',
-  border: '1px solid var(--lw-border)',
+  background: 'var(--glass-bg-strong)',
+  border: '1px solid var(--glass-border)',
   borderRadius: '16px',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
-  boxShadow: 'var(--lw-shadow-soft)',
+  boxShadow: 'var(--glass-shadow)',
+  backdropFilter: 'blur(14px)',
+  WebkitBackdropFilter: 'blur(14px)',
   zIndex: 999,
   opacity: open ? 1 : 0,
   transform: open ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.96)',
@@ -50,8 +55,8 @@ const panelStyle = (open, dragging) => ({
 });
 
 const headerStyle = {
-  background: 'linear-gradient(180deg, var(--lw-sea-salt) 0%, #fff6e8 100%)',
-  borderBottom: '1px solid var(--lw-border)',
+  background: 'linear-gradient(180deg, rgba(255,242,220,0.95) 0%, rgba(255,228,190,0.85) 100%)',
+  borderBottom: '1px solid var(--glass-border)',
   padding: '14px 18px',
   display: 'flex',
   alignItems: 'center',
@@ -87,6 +92,8 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
   const [messages, setMessages] = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [convId,   setConvId]   = useState(conversationId || null);
+  const abortRef               = useRef(null);
+  const requestIdRef           = useRef(0);
   const bottomRef              = useRef(null);
   const [headPos, setHeadPos] = useState({ right: 12, bottom: 28 });
   const [dragVisual, setDragVisual] = useState(null);
@@ -97,6 +104,8 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
   const [snapping, setSnapping] = useState(false);
   const [bubbleIndex, setBubbleIndex] = useState(0);
   const [bubbleAnim, setBubbleAnim] = useState('bubble-in');
+  const [bubbleSide, setBubbleSide] = useState('right');
+  const bubbleRef = useRef(null);
   const PANEL_OFFSET = 68;
   const FAB_SIZE = 56;
   const GAP = 12;
@@ -120,6 +129,9 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
     }
   }, [open, convId]);
 
+  const currentRight = dragVisual?.right ?? headPos.right;
+  const currentBottom = dragVisual?.bottom ?? headPos.bottom;
+
   useEffect(() => {
     if (open) return;
     const id = window.setInterval(() => {
@@ -131,6 +143,21 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
     }, 6000);
     return () => window.clearInterval(id);
   }, [open, BUBBLES.length]);
+
+  useEffect(() => {
+    if (open) return;
+    const vw = window.innerWidth;
+    const bubbleWidth = bubbleRef.current?.offsetWidth || 220;
+    const bubbleGap = 72;
+    const fabLeft = vw - currentRight - FAB_SIZE;
+    const spaceRight = vw - (fabLeft + FAB_SIZE + bubbleGap);
+    const spaceLeft = fabLeft - bubbleGap;
+    if (spaceRight < bubbleWidth && spaceLeft >= bubbleWidth) {
+      setBubbleSide('left');
+    } else {
+      setBubbleSide('right');
+    }
+  }, [open, currentRight, bubbleIndex]);
 
   useEffect(() => {
     try {
@@ -162,10 +189,17 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
     const userMsg = { role: 'user', content: msg, id: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
+    const requestId = ++requestIdRef.current;
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const history = messages.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      const data = await sendMessage(msg, convId, history);
+      const data = await sendMessage(msg, convId, history, { signal: controller.signal });
+
+      if (controller.signal.aborted || requestIdRef.current !== requestId) {
+        return;
+      }
 
       if (data.conversation_id && !convId) {
         setConvId(data.conversation_id);
@@ -178,6 +212,7 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
         id: Date.now() + 1,
       }]);
     } catch (err) {
+      if (err?.name === 'AbortError') return;
       setMessages(prev => [...prev, {
         role: 'agent',
         content: 'Could not reach the AI agent. Make sure n8n is running and the webhook URL is set.',
@@ -185,8 +220,18 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
         error: true,
       }]);
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
+  };
+
+  const handleStop = () => {
+    if (!loading) return;
+    requestIdRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
   };
 
   const clampPos = (pos, size) => {
@@ -218,9 +263,6 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
       panelSize.current = { w: rect.width, h: rect.height };
     }
   };
-
-  const currentRight = dragVisual?.right ?? headPos.right;
-  const currentBottom = dragVisual?.bottom ?? headPos.bottom;
 
   useEffect(() => {
     if (!open) return;
@@ -480,6 +522,8 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
 
         <ChatInput
           onSend={handleSend}
+          onStop={handleStop}
+          isSending={loading}
           disabled={loading}
         />
       </div>
@@ -503,11 +547,27 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
         }}
         aria-label={open ? 'Close chat' : 'Open chat'}
       >
+        <span
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: '-14px',
+            borderRadius: '26px',
+            background: 'radial-gradient(circle at 50% 50%, rgba(255,179,71,0.55) 0%, rgba(255,179,71,0.15) 55%, rgba(255,179,71,0) 80%)',
+            filter: 'blur(6px)',
+            opacity: open ? 0.95 : 0.85,
+            animation: 'ai-aura 2.6s ease-in-out infinite, ai-glow 3.2s ease-in-out infinite',
+            zIndex: 0,
+            pointerEvents: 'none',
+          }}
+        />
         {!open && (
           <div
+            ref={bubbleRef}
             style={{
               position: 'absolute',
-              right: '72px',
+              right: bubbleSide === 'right' ? 'auto' : '72px',
+              left: bubbleSide === 'right' ? '72px' : 'auto',
               bottom: '6px',
               background: 'rgba(255,255,255,0.65)',
               border: '2px solid rgba(19,48,32,0.25)',
@@ -536,7 +596,10 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
           alignItems: 'center',
           justifyContent: 'center',
           color: 'var(--lw-dark)',
-          animation: open ? 'ai-open 0.5s ease-out, ai-idle 2.8s ease-in-out infinite' : 'ai-idle 3.2s ease-in-out infinite',
+          animation: open
+            ? 'ai-open 0.5s ease-out, ai-idle 2.8s ease-in-out infinite, ai-beat 1.8s ease-in-out infinite'
+            : 'ai-idle 3.2s ease-in-out infinite, ai-beat 1.8s ease-in-out infinite',
+          zIndex: 1,
         }}>
           <Bot size={16} strokeWidth={2.2} />
         </span>
@@ -556,6 +619,20 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-2px); }
         }
+        @keyframes ai-beat {
+          0%, 100% { transform: scale(1); }
+          45% { transform: scale(1.06); }
+          60% { transform: scale(0.98); }
+          75% { transform: scale(1.03); }
+        }
+        @keyframes ai-aura {
+          0%, 100% { transform: scale(0.98); opacity: 0.6; }
+          50% { transform: scale(1.12); opacity: 1; }
+        }
+        @keyframes ai-glow {
+          0%, 100% { filter: blur(6px); }
+          50% { filter: blur(14px); }
+        }
         @keyframes bubble-float {
           0%, 100% { transform: translateY(0); opacity: 0.95; }
           50% { transform: translateY(-4px); opacity: 1; }
@@ -572,6 +649,7 @@ export default function ChatPanel({ conversationId, onConversationCreate }) {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.4; }
         }
+
       `}</style>
     </>
   );

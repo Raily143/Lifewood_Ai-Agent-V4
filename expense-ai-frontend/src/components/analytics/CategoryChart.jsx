@@ -14,11 +14,13 @@ const BRAND_COLORS = [
 ];
 
 const cardStyle = {
-  background: 'var(--lw-surface)',
-  border: '1px solid var(--lw-border)',
+  background: 'var(--glass-bg)',
+  border: '1px solid var(--glass-border)',
   borderRadius: '16px',
   padding: '24px',
-  boxShadow: 'var(--lw-shadow-soft)',
+  boxShadow: 'var(--glass-shadow)',
+  backdropFilter: 'blur(12px)',
+  WebkitBackdropFilter: 'blur(12px)',
 };
 
 const titleStyle = {
@@ -36,14 +38,16 @@ const CustomTooltip = ({ active, payload }) => {
   const d = payload[0];
   return (
     <div style={{
-      background: 'var(--lw-white)',
-      border: '1px solid var(--lw-border)',
+      background: 'var(--glass-bg-strong)',
+      border: '1px solid var(--glass-border)',
       borderRadius: '10px',
       padding: '10px 14px',
       fontFamily: "'Manrope', sans-serif",
       fontSize: '12px',
       color: 'var(--lw-text)',
-      boxShadow: 'var(--lw-shadow-soft)',
+      boxShadow: 'var(--glass-shadow)',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
     }}>
       <div style={{ color: d.payload.fill, fontWeight: 700, marginBottom: '4px' }}>{d.name}</div>
       <div>{formatPeso(d.value)}</div>
