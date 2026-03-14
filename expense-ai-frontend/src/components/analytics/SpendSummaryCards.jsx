@@ -82,16 +82,6 @@ function useCountUp(value, duration = 900) {
 }
 
 export default function SpendSummaryCards({ summary, loading }) {
-  if (loading) return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-      {[...Array(4)].map((_, i) => (
-        <div key={i} style={{ ...cardStyle, animation: 'pulse 1.5s infinite' }}>
-          <div style={{ height: '60px', background: 'var(--lw-sea-salt)', borderRadius: '8px' }} />
-        </div>
-      ))}
-    </div>
-  );
-
   const totalSpend      = parseFloat(summary?.total_spend || 0);
   const totalVat        = parseFloat(summary?.total_vat || 0);
   const txCount         = summary?.transaction_count || 0;
@@ -104,6 +94,16 @@ export default function SpendSummaryCards({ summary, loading }) {
   const animTotalVat = useCountUp(totalVat);
   const animTxCount = useCountUp(txCount);
   const animAvgTx = useCountUp(avgTx);
+
+  if (loading) return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+      {[...Array(4)].map((_, i) => (
+        <div key={i} style={{ ...cardStyle, animation: 'pulse 1.5s infinite' }}>
+          <div style={{ height: '60px', background: 'var(--lw-sea-salt)', borderRadius: '8px' }} />
+        </div>
+      ))}
+    </div>
+  );
 
   const cards = [
     {
