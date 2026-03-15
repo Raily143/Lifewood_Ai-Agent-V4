@@ -229,6 +229,7 @@
 
 /* ── Hero banner ── */
 .heroBanner {
+  position: relative;
   display: flex;
   align-items: stretch;
   gap: 0;
@@ -255,29 +256,51 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 10px;
-  padding: 22px 24px;
-  background: rgba(255, 255, 255, 0.04);
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  min-width: 180px;
+  gap: 12px;
+  padding: 20px;
+  background: transparent;
+  min-width: 198px;
 }
 
 .heroTagline {
-  display: block;
-  width: 100%;
-  text-align: center;
-  padding: 6px 0;
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 1rem;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 50%;
+  top: 20px;
+  transform: translateX(-50%);
+  z-index: 2;
+  gap: 10px;
+  width: fit-content;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  font-size: 0.98rem;
+  font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
+.heroTaglineOn {
+  color: var(--saffaron);
+}
+
+.heroTaglineDivider {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.heroTaglineOff {
+  color: rgba(255, 255, 255, 0.92);
+}
+
 .heroBanner h1 {
-  margin: 16px 0 6px;
-  font-size: clamp(1.4rem, 2.6vw, 2rem);
-  line-height: 1.1;
+  margin: 14px 0 10px;
+  font-size: clamp(2rem, 3.2vw, 2.85rem);
+  line-height: 1.04;
   letter-spacing: -0.04em;
   font-weight: 800;
   overflow: hidden;
@@ -323,22 +346,60 @@
 
 .heroSubtitle {
   margin: 0;
-  max-width: 38ch;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 0.84rem;
-  line-height: 1.5;
+  max-width: 42ch;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.92rem;
+  line-height: 1.58;
+}
+
+.heroBanner .greetingText {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 10px;
+}
+
+.heroBanner .greetingText::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 82px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--saffaron), rgba(255, 195, 112, 0.35));
+}
+
+.heroBanner .greetingHeader {
+  color: var(--white);
+  text-shadow: 0 10px 24px rgba(0, 0, 0, 0.3);
 }
 
 .heroDetailCard {
-  padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(255, 179, 71, 0.12), transparent 52%),
+    linear-gradient(120deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.heroDetailCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--saffaron), rgba(255, 179, 71, 0.35));
+  opacity: 0.9;
 }
 
 .heroDetailCard span {
   display: block;
-  color: rgba(245, 238, 219, 0.5);
+  color: rgba(255, 195, 112, 0.75);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-size: 0.62rem;
@@ -347,11 +408,12 @@
 
 .heroDetailCard strong {
   display: block;
-  margin-top: 4px;
+  margin-top: 5px;
   color: #fff;
-  font-size: 1.05rem;
+  font-size: 1.45rem;
   line-height: 1.15;
   letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 /* ── Stats strip ── */
@@ -362,11 +424,13 @@
   max-width: 1320px;
   width: 100%;
   margin: 0 auto;
-  padding: 12px 20px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 38, 26, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 246, 243, 0.92));
+  box-shadow:
+    0 10px 24px rgba(15, 38, 26, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .statItem {
@@ -375,7 +439,8 @@
   gap: 10px;
   flex: 1;
   min-width: 0;
-  padding: 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
 }
 
 .statItemAction {
@@ -384,19 +449,21 @@
   gap: 10px;
   flex: 1.5;
   min-width: 0;
-  padding: 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(120deg, rgba(255, 179, 71, 0.08), rgba(4, 98, 65, 0.04));
 }
 
 .statIcon {
   color: var(--saffaron);
   flex-shrink: 0;
-  opacity: 0.85;
+  opacity: 0.95;
 }
 
 .statItem strong,
 .statItemAction strong {
   display: block;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 800;
   color: var(--dark-serpent);
   line-height: 1.15;
@@ -409,19 +476,24 @@
 .statItem span,
 .statItemAction span {
   display: block;
-  color: rgba(15, 38, 26, 0.5);
-  font-size: 0.7rem;
+  color: rgba(15, 38, 26, 0.55);
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   white-space: nowrap;
 }
 
 .statDivider {
   display: block;
   width: 1px;
-  height: 28px;
-  background: var(--border);
+  height: 32px;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 38, 26, 0),
+    rgba(15, 38, 26, 0.14),
+    rgba(15, 38, 26, 0)
+  );
   flex-shrink: 0;
 }
 
@@ -624,10 +696,12 @@
   width: 100%;
   margin: 0 auto;
   padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--surface-raised);
-  box-shadow: var(--shadow-sm);
+  border: 1px solid rgba(15, 38, 26, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(246, 246, 243, 0.92));
+  box-shadow:
+    0 10px 24px rgba(15, 38, 26, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
 }
 
 .controlsIntro h2 {
@@ -635,7 +709,7 @@
 }
 
 .controlsIntro p {
-  color: rgba(15, 38, 26, 0.74);
+  color: rgba(15, 38, 26, 0.64);
   font-size: 0.84rem;
 }
 
@@ -669,15 +743,18 @@
   min-width: 300px;
   max-width: 360px;
   padding: 0 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-raised);
+  border: 1px solid rgba(15, 38, 26, 0.14);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
   transition: all 0.2s var(--ease);
 }
 
 .searchBox:focus-within {
-  border-color: rgba(4, 98, 65, 0.25);
-  box-shadow: 0 0 0 3px rgba(4, 98, 65, 0.06);
+  border-color: rgba(4, 98, 65, 0.35);
+  box-shadow:
+    0 0 0 3px rgba(4, 98, 65, 0.1),
+    0 8px 18px rgba(4, 98, 65, 0.08);
 }
 
 .searchBox input {
@@ -705,9 +782,10 @@
 .viewToggle {
   display: inline-flex;
   padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
+  border: 1px solid rgba(15, 38, 26, 0.14);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .viewToggle button {
@@ -719,7 +797,7 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: rgba(15, 38, 26, 0.4);
+  color: rgba(15, 38, 26, 0.48);
   font: inherit;
   cursor: pointer;
   transition: all 0.2s var(--ease);
@@ -727,7 +805,7 @@
 
 .viewToggle button:hover {
   color: var(--dark-serpent);
-  background: rgba(15, 38, 26, 0.06);
+  background: rgba(15, 38, 26, 0.08);
 }
 
 .viewToggle button:focus-visible,
@@ -741,7 +819,7 @@
 .viewToggleActive {
   background: var(--dark-serpent) !important;
   color: var(--white) !important;
-  box-shadow: 0 1px 4px rgba(15, 38, 26, 0.15);
+  box-shadow: 0 4px 10px rgba(15, 38, 26, 0.25);
 }
 
 .emptyState {
@@ -765,7 +843,7 @@
 .folderGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  gap: 14px;
   max-width: 1320px;
   width: 100%;
   margin: 0 auto;
@@ -868,12 +946,15 @@
   overflow: hidden;
   min-height: 158px;
   padding: 18px 18px 16px;
-  border-radius: 12px;
-  background: var(--white);
+  border-radius: 14px;
+  border: 1px solid rgba(15, 38, 26, 0.11);
+  background:
+    radial-gradient(circle at 95% 6%, rgba(245, 166, 35, 0.09), transparent 38%),
+    linear-gradient(180deg, #ffffff 0%, #fbfaf7 100%);
   color: var(--dark-serpent);
   text-align: left;
   cursor: pointer;
-  box-shadow: none;
+  box-shadow: 0 12px 22px rgba(15, 38, 26, 0.08);
   transition: transform 0.18s var(--ease), border-color 0.18s var(--ease), background 0.18s var(--ease);
   animation: cardEntrance 0.4s var(--ease) both;
 }
@@ -889,10 +970,12 @@
 
 .folderCard:hover,
 .folderCardActive {
-  transform: translateY(-1px);
-  box-shadow: none;
-  border-color: rgba(15, 38, 26, 0.18);
-  background: #fffdfa;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 26px rgba(15, 38, 26, 0.12);
+  border-color: rgba(4, 98, 65, 0.26);
+  background:
+    radial-gradient(circle at 95% 6%, rgba(245, 166, 35, 0.12), transparent 40%),
+    linear-gradient(180deg, #ffffff 0%, #f8f7f3 100%);
 }
 
 .folderIcon {
