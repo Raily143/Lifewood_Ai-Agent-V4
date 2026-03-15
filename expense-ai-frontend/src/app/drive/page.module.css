@@ -20,8 +20,6 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  max-height: 100vh;
-  overflow-y: auto;
   padding: 0;
   background: var(--paper);
   color: var(--dark-serpent);
@@ -34,8 +32,11 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
   padding: 20px 28px 24px;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .topbar {
@@ -230,7 +231,8 @@
 /* ── Hero banner ── */
 .heroBanner {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
   align-items: stretch;
   gap: 0;
   max-width: 1320px;
@@ -252,14 +254,20 @@
   min-width: 0;
 }
 
+.heroBannerLeft > p {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+}
+
 .heroBannerRight {
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
   padding: 20px;
   background: transparent;
-  min-width: 198px;
+  min-width: 0;
 }
 
 .heroTagline {
@@ -303,7 +311,7 @@
   line-height: 1.04;
   letter-spacing: -0.04em;
   font-weight: 800;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .greetingText {
@@ -321,18 +329,26 @@
 }
 
 .newUserHeaderIn {
+  opacity: 1;
+  transform: translateY(0);
   animation: lifewoodFadeRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .newUserDescriptionIn {
+  opacity: 1;
+  transform: translateY(0);
   animation: lifewoodFadeRise 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
 }
 
 .returningUserHeaderIn {
+  opacity: 1;
+  transform: translateY(0);
   animation: lifewoodSlideUp 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .returningUserDescriptionIn {
+  opacity: 1;
+  transform: translateY(0);
   animation: lifewoodSlideUp 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
 }
 
@@ -350,6 +366,9 @@
   color: rgba(255, 255, 255, 0.82);
   font-size: 0.92rem;
   line-height: 1.58;
+  display: block;
+  visibility: visible;
+  opacity: 1;
 }
 
 .heroBanner .greetingText {
@@ -378,6 +397,10 @@
   position: relative;
   overflow: hidden;
   padding: 11px 13px;
+  min-height: 84px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 13px;
   background:
@@ -414,6 +437,9 @@
   line-height: 1.15;
   letter-spacing: -0.02em;
   text-wrap: balance;
+  word-break: break-word;
+  visibility: visible;
+  opacity: 1;
 }
 
 /* ── Stats strip ── */
@@ -569,18 +595,26 @@
 }
 
 .newUserHeaderIn {
+  opacity: 1;
+  transform: translateY(0);
   animation: lifewoodFadeRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .newUserDescriptionIn {
+  opacity: 1;
+  transform: translateY(0);
   animation: lifewoodFadeRise 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
 }
 
 .returningUserHeaderIn {
+  opacity: 1;
+  transform: translateY(0);
   animation: lifewoodSlideUp 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .returningUserDescriptionIn {
+  opacity: 1;
+  transform: translateY(0);
   animation: lifewoodSlideUp 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.08s both;
 }
 
@@ -732,15 +766,18 @@
 .controlActions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   margin-left: auto;
+  min-width: 0;
 }
 
 .searchBox {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 300px;
+  min-width: 0;
+  width: 100%;
   max-width: 360px;
   padding: 0 14px;
   border: 1px solid rgba(15, 38, 26, 0.14);
@@ -2051,9 +2088,84 @@
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 1024px) {
   .pageContent {
-    padding: 12px 14px 16px;
+    padding: 14px 16px 18px;
+  }
+
+  .heroBanner {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .heroBannerLeft {
+    padding: 16px 16px 0;
+  }
+
+  .heroBannerLeft > .heroTagline {
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    order: 0;
+    margin: 0 auto 10px;
+    max-width: 100%;
+  }
+
+  .heroBannerLeft > h1 {
+    order: 1;
+  }
+
+  .heroBannerLeft > p {
+    order: 2;
+    max-width: 100%;
+  }
+
+  .heroBanner h1 {
+    margin: 8px 0 8px;
+    font-size: clamp(1.6rem, 7vw, 2rem);
+    line-height: 1.08;
+  }
+
+  .heroBanner .greetingText {
+    padding-bottom: 8px;
+  }
+
+  .heroBannerRight {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 0 16px 16px;
+  }
+
+  .heroDetailCard {
+    min-width: 0;
+  }
+
+  .statsStrip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .statDivider {
+    display: none;
+  }
+
+  .statItem,
+  .statItemAction {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.68);
+  }
+
+  .statItemAction {
+    grid-column: 1 / -1;
   }
 
   .topbar {
@@ -2077,11 +2189,6 @@
 
   .syncBadge {
     display: none;
-  }
-
-  .hero {
-    grid-template-columns: 1fr;
-    gap: 10px;
   }
 
   .heroCard {
@@ -2112,6 +2219,14 @@
 
   .controls {
     padding: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .controlActions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 
   .folderGrid {
@@ -2182,6 +2297,42 @@
 @media (max-width: 480px) {
   .pageContent {
     padding: 10px 10px 12px;
+  }
+
+  .heroBanner {
+    gap: 8px;
+  }
+
+  .heroBannerLeft {
+    padding: 12px 12px 0;
+  }
+
+  .heroBannerLeft > .heroTagline {
+    padding: 7px 12px;
+    font-size: 0.84rem;
+    letter-spacing: 0.1em;
+  }
+
+  .heroBanner h1 {
+    margin: 8px 0 8px;
+    font-size: clamp(1.35rem, 8vw, 1.7rem);
+  }
+
+  .heroSubtitle {
+    font-size: 0.86rem;
+    line-height: 1.5;
+  }
+
+  .heroBannerRight {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 0 12px 12px;
+  }
+
+  .statsStrip {
+    grid-template-columns: 1fr;
+    padding: 8px;
+    gap: 6px;
   }
 
   .topbar {
