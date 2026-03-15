@@ -123,26 +123,6 @@ function getFolderHealth(item: DriveItem): { label: string; tone: 'healthy' | 'a
   return { label: 'Empty', tone: 'attention' };
 }
 
-const GREETINGS = ['Good day, admin', 'Welcome back, admin', 'Hello, admin'];
-
-function useCyclingGreeting(intervalMs: number) {
-  const [index, setIndex] = useState(0);
-  const [animClass, setAnimClass] = useState('splitIn');
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setAnimClass('splitOut');
-      setTimeout(() => {
-        setIndex((prev) => (prev + 1) % GREETINGS.length);
-        setAnimClass('splitIn');
-      }, 500);
-    }, intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-
-  return { greeting: GREETINGS[index], animClass };
-}
-
 export default function DrivePage() {
   const router = useRouter();
   const [folders, setFolders] = useState<DriveItem[]>([]);
@@ -152,7 +132,6 @@ export default function DrivePage() {
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
   const [userType, setUserType] = useState<'new' | 'returning'>('new');
-  const { greeting, animClass } = useCyclingGreeting(6000);
 
   const deferredSearch = useDeferredValue(searchInput.trim().toLowerCase());
 
@@ -205,9 +184,9 @@ export default function DrivePage() {
     }
 
     return {
-      header: 'Welcome back',
+      header: 'Welcome back!',
       description:
-        'Your Expense AI workspace is active. Continue reviewing your scanned receipts and let AI keep your expenses organized in real time.',
+        'Your Expense AI workspace is active. Continue reviewing scanned receipts and let AI keep your expenses organized in real time.',
     };
   }, [userType]);
 
@@ -287,8 +266,12 @@ export default function DrivePage() {
       <section className={styles.heroBanner}>
         <div className={styles.heroBannerLeft}>
           <span className={styles.heroTagline}>ALWAYS ON NEVER OFF</span>
-          <h1 className={`${styles.greetingText} ${animClass === 'splitIn' ? styles.splitIn : styles.splitOut}`}>
-            {greeting}
+          <h1
+            className={`${styles.greetingText} ${styles.greetingHeader} ${
+              userType === 'new' ? styles.newUserHeaderIn : styles.returningUserHeaderIn
+            }`}
+          >
+            {greetingContent.header}
           </h1>
           <p
             className={`${styles.heroSubtitle} ${styles.greetingDescription} ${
